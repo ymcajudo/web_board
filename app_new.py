@@ -21,7 +21,8 @@ def init_db():
     try:
         if db is None or not db.open:
             db = pymysql.connect(
-                host="192.168.0.30",
+                host="db",			#was 서버 host 파일에 10.0.1.30 db 라고 등록시                
+                #host="192.168.0.30",
                 user="board_user",
                 password="new1234!",
                 database="board_db",

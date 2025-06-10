@@ -22,7 +22,8 @@ def init_db():
     global db
     try:
         db = pymysql.connect(
-            host="10.0.1.30",		#DB server
+            host="db",			#was 서버 host 파일에 10.0.1.30 db 라고 등록시
+            #host="10.0.1.30",		#DB server
             user="board_user",
             password="new1234!",
             database="board_db",
