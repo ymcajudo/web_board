@@ -1,3 +1,5 @@
+#Mariadb
+
 from flask import Flask, request, redirect, url_for, render_template, flash, send_from_directory
 import pymysql
 import logging
@@ -20,7 +22,7 @@ def init_db():
     global db
     try:
         db = pymysql.connect(
-            host="192.168.0.102",
+            host="10.0.1.30",		#DB server
             user="board_user",
             password="new1234!",
             database="board_db",
