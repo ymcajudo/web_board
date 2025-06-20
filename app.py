@@ -1,10 +1,11 @@
 #Mariadb
 
-from flask import Flask, request, redirect, url_for, render_template, flash, send_from_directory
+from flask import Flask, request, redirect, url_for, render_template, flash, send_from_directory, session
 import pymysql
 import logging
 import os
 import uuid
+import json
 from datetime import datetime
 import pytz
 
@@ -33,6 +34,32 @@ def init_db():
         app.logger.error(f"Database connection failed: {e}")
         db = None
 
+def load_identity():
+    """identity.json 파일에서 사용자 정보를 읽어옴"""
+    try:
+        with open('identity.json', 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        app.logger.error("identity.json file not found")
+        return {}
+    except json.JSONDecodeError:
+        app.logger.error("Invalid JSON format in identity.json")
+        return {}
+
+def is_logged_in():
+    """사용자가 로그인되어 있는지 확인"""
+    return 'logged_in' in session and session['logged_in']
+
+def login_required(f):
+    """로그인이 필요한 페이지에 사용할 데코레이터"""
+    def decorated_function(*args, **kwargs):
+        if not is_logged_in():
+            flash("로그인이 필요합니다.")
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    decorated_function.__name__ = f.__name__
+    return decorated_function
+
 def convert_to_kst(utc_time):
     utc = pytz.utc
     kst = pytz.timezone('Asia/Seoul')
@@ -50,7 +77,34 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        
+        # identity.json에서 사용자 정보 확인
+        identity_data = load_identity()
+        
+        if username in identity_data and identity_data[username]['password'] == password:
+            session['logged_in'] = True
+            session['username'] = username
+            flash(f"{username}님, 로그인되었습니다.")
+            return redirect(url_for('index'))
+        else:
+            flash("아이디 또는 비밀번호를 다시 확인해주세요.")
+            return render_template('login.html')
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash("로그아웃되었습니다.")
+    return redirect(url_for('login'))
+
 @app.route('/')
+@login_required
 def index():
     try:
         page = request.args.get('page', 1, type=int)
@@ -76,6 +130,7 @@ def index():
         return render_template('index.html', posts=[], page=1, total_pages=1)
 
 @app.route('/delete/<int:post_id>', methods=['POST'])
+@login_required
 def delete_post(post_id):
     try:
         with db.cursor() as cursor:
@@ -95,6 +150,7 @@ def delete_post(post_id):
     return redirect(url_for('index'))
 
 @app.route('/post/<int:post_id>')
+@login_required
 def post(post_id):
     try:
         with db.cursor() as cursor:
@@ -112,6 +168,7 @@ def post(post_id):
         return redirect(url_for('index'))
 
 @app.route('/new', methods=['GET', 'POST'])
+@login_required
 def new_post():
     if request.method == 'POST':
         title = request.form['title']
@@ -139,10 +196,12 @@ def new_post():
     return render_template('new_post.html')
 
 @app.route('/uploads/<filename>')
+@login_required
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 @app.route('/download/<int:post_id>')
+@login_required
 def download_file(post_id):
     try:
         with db.cursor() as cursor:

@@ -3,6 +3,28 @@
 <head>
     <title>게시글 확인</title>
     <style>
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .user-info {
+            font-size: 14px;
+            color: #666;
+        }
+        .logout-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
         form {
             width: 60%; /* 폼 전체 너비 */
             margin: auto; /* 가운데 정렬 */
@@ -33,6 +55,18 @@
     </style>
 </head>
 <body>
+    <div class="header">
+        <div></div>
+        <div class="user-info">
+            {% if session.username %}
+                <span>{{ session.username }}님 환영합니다!</span>
+                <a href="{{ url_for('logout') }}">
+                    <button class="logout-btn">로그아웃</button>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
     <h1>게시글 확인</h1>
     <form id="postForm" action="/delete/{{ post.id }}" method="post" onsubmit="return confirm('정말로 삭제하시겠습니까?');">
         <label for="title">제목:</label>
