@@ -2,13 +2,13 @@
 
 from flask import Flask, request, redirect, url_for, render_template, flash, send_from_directory, session
 import pymysql
-from pymysql import pooling
 import logging
 import os
 import uuid
 import json
 from datetime import datetime
 import pytz
+from DBUtils.PooledDB import PooledDB
 from contextlib import contextmanager
 
 app = Flask(__name__)
@@ -25,11 +25,17 @@ def init_db_pool():
     """데이터베이스 연결 풀 초기화"""
     global db_pool
     try:
-        db_pool = pooling.ConnectionPool(
-            pool_name='web_pool',
-            pool_size=10,  # 풀의 최대 연결 수
-            pool_reset_session=True,  # 연결 재사용 시 세션 리셋
-            host="dbnas",  # was 서버 host 파일에 10.0.1.30 db 라고 등록시
+        db_pool = PooledDB(
+            creator=pymysql,
+            maxconnections=10,  # 최대 연결 수
+            mincached=2,        # 최소 캐시 연결 수
+            maxcached=5,        # 최대 캐시 연결 수
+            maxshared=3,        # 최대 공유 연결 수
+            blocking=True,      # 연결 풀이 가득 찰 때 대기
+            maxusage=None,      # 단일 연결의 최대 재사용 횟수
+            setsession=[],      # 세션 설정
+            ping=0,             # 연결 확인 간격 (0=비활성화)
+            host="dbnas",       # was 서버 host 파일에 10.0.1.30 db 라고 등록시
             #host="10.0.1.30",  # DB server
             user="board_user",
             password="new1234!",
@@ -40,10 +46,7 @@ def init_db_pool():
             # 연결 유지 관련 설정
             connect_timeout=60,
             read_timeout=30,
-            write_timeout=30,
-            # 연결 재시도 설정
-            ping_interval=300,  # 5분마다 ping
-            retry_on_timeout=True
+            write_timeout=30
         )
         app.logger.info("Database connection pool initialized successfully")
     except Exception as e:
@@ -58,12 +61,12 @@ def get_db_connection():
         if db_pool is None:
             init_db_pool()
         
-        connection = db_pool.get_connection()
+        connection = db_pool.connection()
         # 연결 상태 확인 및 재연결
         try:
             connection.ping(reconnect=True)
         except:
-            connection = db_pool.get_connection()
+            connection = db_pool.connection()
             
         yield connection
     except Exception as e:
@@ -108,10 +111,11 @@ def convert_to_kst(utc_time):
     kst_dt = utc_dt.astimezone(kst)
     return kst_dt.strftime('%Y-%m-%d %H:%M:%S')
 
-@app.before_first_request
-def initialize_app():
-    """애플리케이션 시작 시 연결 풀 초기화"""
-    init_db_pool()
+@app.before_request
+def before_request():
+    """모든 요청 전에 연결 풀 초기화 확인"""
+    if db_pool is None:
+        init_db_pool()
 
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
