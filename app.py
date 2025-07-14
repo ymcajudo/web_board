@@ -253,17 +253,13 @@ def convert_to_kst(utc_time):
     kst_dt = utc_dt.astimezone(kst)
     return kst_dt.strftime('%Y-%m-%d %H:%M:%S')
 
-# 첫 번째 요청 처리를 위한 플래그
-app_initialized = False
-
-@app.before_first_request
-def initialize_app():
-    """첫 번째 요청 시 연결 풀 초기화"""
-    global app_initialized
-    if not app_initialized:
-        app.logger.info("Initializing database connection pool on first request")
+# 데이터베이스 연결 풀 초기화 함수 (앱 시작 시 한 번만 실행)
+def ensure_db_pool():
+    """데이터베이스 연결 풀이 초기화되었는지 확인하고 필요시 초기화"""
+    global db_pool
+    if db_pool is None or db_pool._closed:
+        app.logger.info("Initializing database connection pool...")
         init_db_pool()
-        app_initialized = True
 
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
@@ -300,6 +296,8 @@ def logout():
 @login_required
 def index():
     try:
+        ensure_db_pool()  # 데이터베이스 연결 풀 확인
+        
         page = request.args.get('page', 1, type=int)
         per_page = 5
         offset = (page - 1) * per_page
@@ -337,6 +335,8 @@ def index():
 @login_required
 def delete_post(post_id):
     try:
+        ensure_db_pool()  # 데이터베이스 연결 풀 확인
+        
         with get_db_connection() as db:
             with db.cursor() as cursor:
                 # 파일명 조회
@@ -370,6 +370,8 @@ def delete_post(post_id):
 @login_required
 def post(post_id):
     try:
+        ensure_db_pool()  # 데이터베이스 연결 풀 확인
+        
         with get_db_connection() as db:
             with db.cursor() as cursor:
                 cursor.execute("SELECT * FROM posts WHERE id=%s", (post_id,))
@@ -411,6 +413,8 @@ def new_post():
                 return redirect(url_for('new_post'))
 
         try:
+            ensure_db_pool()  # 데이터베이스 연결 풀 확인
+            
             with get_db_connection() as db:
                 with db.cursor() as cursor:
                     cursor.execute("""
@@ -439,6 +443,8 @@ def uploaded_file(filename):
 @login_required
 def download_file(post_id):
     try:
+        ensure_db_pool()  # 데이터베이스 연결 풀 확인
+        
         with get_db_connection() as db:
             with db.cursor() as cursor:
                 cursor.execute("SELECT file_name, original_file_name FROM posts WHERE id=%s", (post_id,))
@@ -470,6 +476,8 @@ def download_file(post_id):
 def health_check():
     """애플리케이션과 데이터베이스 상태 확인"""
     try:
+        ensure_db_pool()  # 데이터베이스 연결 풀 확인
+        
         with get_db_connection() as db:
             with db.cursor() as cursor:
                 cursor.execute("SELECT 1")
