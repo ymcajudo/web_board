@@ -1,6 +1,5 @@
-#Mariadb with Connection Pool - 연결 안정성 개선
-
-#Mariadb, Flask App with Custom Connection Pool - PyMySQL 기본 기능만 사용
+# Mariadb with Connection Pool - 연결 안정성 개선
+# Mariadb, Flask App with Custom Connection Pool - PyMySQL 기본 기능만 사용
 
 from flask import Flask, request, redirect, url_for, render_template, flash, send_from_directory, session
 import pymysql
