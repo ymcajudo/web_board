@@ -246,10 +246,16 @@ def convert_to_kst(utc_time):
     kst_dt = utc_dt.astimezone(kst)
     return kst_dt.strftime('%Y-%m-%d %H:%M:%S')
 
-@app.before_first_request
+# 첫 번째 요청 처리를 위한 플래그
+app_initialized = False
+
+@app.before_request
 def initialize_app():
-    """애플리케이션 시작 시 연결 풀 초기화"""
-    init_db_pool()
+    """첫 번째 요청 시 연결 풀 초기화"""
+    global app_initialized
+    if not app_initialized:
+        init_db_pool()
+        app_initialized = True
 
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
@@ -473,6 +479,8 @@ def close_db_pool(error):
 
 if __name__ == '__main__':
     try:
+        # 애플리케이션 시작 시 연결 풀 초기화
+        init_db_pool()
         app.run(host='0.0.0.0', port=5000, debug=True)
     finally:
         # 프로그램 종료 시 연결 풀 정리
