@@ -14,6 +14,9 @@ import time
 import threading
 from queue import Queue, Empty
 import weakref
+import atexit
+import signal
+import sys
 
 app = Flask(__name__)
 app.secret_key = 'new1234!'  
@@ -136,6 +139,7 @@ class ConnectionPool:
             except:
                 pass
         self.active_connections = 0
+        app.logger.info("Connection pool closed")
 
 # 데이터베이스 연결 풀 전역 변수
 db_pool = None
@@ -144,6 +148,10 @@ def init_db_pool():
     """데이터베이스 연결 풀 초기화"""
     global db_pool
     try:
+        # 기존 풀이 있다면 닫기
+        if db_pool is not None:
+            db_pool.close_all()
+            
         connection_config = {
             'host': "dbnas",  # was 서버 host 파일에 10.0.1.30 db 라고 등록시
             # 'host': "10.0.1.30",  # DB server
@@ -176,7 +184,7 @@ def get_db_connection():
     
     for attempt in range(max_retries):
         try:
-            if db_pool is None:
+            if db_pool is None or db_pool._closed:
                 app.logger.info("Reinitializing database pool...")
                 init_db_pool()
                 if db_pool is None:
@@ -206,7 +214,7 @@ def get_db_connection():
         app.logger.error(f"Database operation error: {e}")
         raise
     finally:
-        if connection and db_pool:
+        if connection and db_pool and not db_pool._closed:
             try:
                 db_pool.return_connection(connection)
             except Exception as close_error:
@@ -248,11 +256,12 @@ def convert_to_kst(utc_time):
 # 첫 번째 요청 처리를 위한 플래그
 app_initialized = False
 
-@app.before_request
+@app.before_first_request
 def initialize_app():
     """첫 번째 요청 시 연결 풀 초기화"""
     global app_initialized
     if not app_initialized:
+        app.logger.info("Initializing database connection pool on first request")
         init_db_pool()
         app_initialized = True
 
@@ -470,18 +479,38 @@ def health_check():
         app.logger.error(f"Health check failed: {e}")
         return {"status": "unhealthy", "database": "disconnected", "error": str(e)}, 500
 
-# 애플리케이션 종료 시 연결 풀 정리
-@app.teardown_appcontext
-def close_db_pool(error):
+# 애플리케이션 종료 시 연결 풀 정리를 위한 핸들러
+def cleanup_db_pool():
+    """애플리케이션 종료 시 데이터베이스 연결 풀 정리"""
+    global db_pool
     if db_pool:
+        app.logger.info("Cleaning up database connection pool")
         db_pool.close_all()
+        db_pool = None
+
+# 시그널 핸들러 등록
+def signal_handler(signum, frame):
+    """시그널 핸들러 - 우아한 종료"""
+    app.logger.info(f"Received signal {signum}, shutting down gracefully...")
+    cleanup_db_pool()
+    sys.exit(0)
+
+# 시그널 핸들러 등록
+signal.signal(signal.SIGTERM, signal_handler)
+signal.signal(signal.SIGINT, signal_handler)
+
+# atexit 핸들러 등록
+atexit.register(cleanup_db_pool)
 
 if __name__ == '__main__':
     try:
         # 애플리케이션 시작 시 연결 풀 초기화
         init_db_pool()
         app.run(host='0.0.0.0', port=5000, debug=True)
+    except KeyboardInterrupt:
+        app.logger.info("Application interrupted by user")
+    except Exception as e:
+        app.logger.error(f"Application error: {e}")
     finally:
         # 프로그램 종료 시 연결 풀 정리
-        if db_pool:
-            db_pool.close_all()
+        cleanup_db_pool()
