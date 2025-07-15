@@ -1,7 +1,7 @@
 # Mariadb with Connection Pool - 연결 안정성 개선
 # Mariadb, Flask App with Custom Connection Pool - PyMySQL 기본 기능만 사용
 
-from flask import Flask, request, redirect, url_for, render_template, flash, send_from_directory, session
+from flask import Flask, request, redirect, url_for, render_template, flash, send_from_directory, session, jsonify
 import pymysql
 import logging
 import os
@@ -21,6 +21,9 @@ import sys
 app = Flask(__name__)
 app.secret_key = 'new1234!'  
 app.config['UPLOAD_FOLDER'] = '/mnt/test'
+
+# ZIP 파일 최대 크기 설정 (100MiB)
+MAX_ZIP_SIZE = 100 * 1024 * 1024  # 100MiB in bytes
 
 # 로깅 설정
 logging.basicConfig(level=logging.DEBUG)
@@ -262,9 +265,52 @@ def ensure_db_pool():
         init_db_pool()
 
 def allowed_file(filename):
-    ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
+    ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'zip'}
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def get_file_size(file_obj):
+    """파일 객체의 크기를 바이트 단위로 반환"""
+    file_obj.seek(0, 2)  # 파일 끝으로 이동
+    size = file_obj.tell()  # 현재 위치(파일 크기) 반환
+    file_obj.seek(0)  # 파일 시작으로 돌아가기
+    return size
+
+def format_file_size(size_bytes):
+    """바이트를 사람이 읽기 쉬운 형태로 변환"""
+    if size_bytes >= 1024 * 1024:
+        return f"{size_bytes / (1024 * 1024):.1f}MB"
+    elif size_bytes >= 1024:
+        return f"{size_bytes / 1024:.1f}KB"
+    else:
+        return f"{size_bytes}B"
+
+@app.route('/check_file_size', methods=['POST'])
+@login_required
+def check_file_size():
+    """파일 크기 확인 API"""
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'File type not allowed'}), 400
+    
+    # ZIP 파일인 경우 크기 확인
+    if file.filename.lower().endswith('.zip'):
+        file_size = get_file_size(file)
+        if file_size > MAX_ZIP_SIZE:
+            return jsonify({
+                'error': 'File too large',
+                'message': f'ZIP 파일 크기가 100MB를 초과합니다. (현재 크기: {format_file_size(file_size)})',
+                'max_size': format_file_size(MAX_ZIP_SIZE),
+                'current_size': format_file_size(file_size)
+            }), 413
+    
+    return jsonify({'success': True}), 200
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -402,6 +448,14 @@ def new_post():
         
         if file and allowed_file(file.filename):
             original_file_name = file.filename
+            
+            # ZIP 파일인 경우 크기 확인
+            if file.filename.lower().endswith('.zip'):
+                file_size = get_file_size(file)
+                if file_size > MAX_ZIP_SIZE:
+                    flash(f"ZIP 파일 크기가 100MB를 초과합니다. (현재 크기: {format_file_size(file_size)})")
+                    return redirect(url_for('new_post'))
+            
             unique_filename = str(uuid.uuid4()) + os.path.splitext(file.filename)[1]
             try:
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
