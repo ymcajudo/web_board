@@ -575,3 +575,4 @@ if __name__ == '__main__':
         app.logger.error(f"Application error: {e}")
     finally:
         # 프로그램 종료 시 연결 풀 정리
+        cleanup_db_pool()
