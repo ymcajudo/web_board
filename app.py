@@ -241,14 +241,6 @@ def convert_to_kst(utc_time):
     kst_dt = utc_dt.astimezone(kst)
     return kst_dt.strftime('%Y-%m-%d %H:%M:%S')
 
-def truncate_content(content, max_length=20):
-    """내용을 지정된 길이로 자르고 ...을 추가"""
-    if content is None:
-        return ""
-    if len(content) <= max_length:
-        return content
-    return content[:max_length] + "..."
-
 @app.before_first_request
 def initialize_app():
     """애플리케이션 시작 시 연결 풀 초기화"""
@@ -325,11 +317,10 @@ def index():
                 posts = cursor.fetchall()
                 app.logger.info(f"Retrieved {len(posts)} posts from database")
 
-                # 게시글 번호 및 시간 변환, 내용 20자 제한
+                # 게시글 번호 및 시간 변환
                 for i, post in enumerate(posts):
                     post['created_at'] = convert_to_kst(post['created_at'])
                     post['seq'] = total_posts - (offset + i)
-                    post['content'] = truncate_content(post['content'], 20)  # 내용 20자 제한
                     app.logger.debug(f"Post {i+1}: ID={post['id']}, Title={post['title']}")
 
         app.logger.info(f"Successfully loaded {len(posts)} posts for page {page}")
