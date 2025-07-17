@@ -19,7 +19,7 @@ import signal
 import sys
 
 app = Flask(__name__)
-app.secret_key = 'new1234!'  
+app.secret_key = 'new1234!'
 app.config['UPLOAD_FOLDER'] = '/mnt/test'
 
 # ZIP 파일 최대 크기 설정 (100MiB)
@@ -291,14 +291,14 @@ def check_file_size():
     """파일 크기 확인 API"""
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
-    
+
     file = request.files['file']
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
-    
+
     if not allowed_file(file.filename):
         return jsonify({'error': 'File type not allowed'}), 400
-    
+
     # ZIP 파일인 경우 크기 확인
     if file.filename.lower().endswith('.zip'):
         file_size = get_file_size(file)
@@ -309,7 +309,7 @@ def check_file_size():
                 'max_size': format_file_size(MAX_ZIP_SIZE),
                 'current_size': format_file_size(file_size)
             }), 413
-    
+
     return jsonify({'success': True}), 200
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -357,9 +357,9 @@ def index():
 
                 # 게시글 목록 조회
                 cursor.execute("""
-                    SELECT id, title, content, file_name, original_file_name, created_at 
-                    FROM posts 
-                    ORDER BY created_at DESC 
+                    SELECT id, title, content, file_name, original_file_name, created_at
+                    FROM posts
+                    ORDER BY created_at DESC
                     LIMIT %s OFFSET %s
                 """, (per_page, offset))
                 posts = cursor.fetchall()
@@ -368,6 +368,15 @@ def index():
                 for i, post in enumerate(posts):
                     post['created_at'] = convert_to_kst(post['created_at'])
                     post['seq'] = total_posts - (offset + i)
+
+                    # 제목 일부만 표시 (앞 20글자)
+                    title = post.get('title') or ''
+                    post['short_title'] = title[:15] + ('...' if len(title) > 15 else '')
+
+                     # 내용 앞 20자만 표시
+                    content = post.get('content') or ''
+                    post['short_content'] = content[:25] + ('...' if len(content) > 25 else '')
+
 
         app.logger.info(f"Successfully loaded {len(posts)} posts for page {page}")
         return render_template('index.html', posts=posts, page=page, total_pages=total_pages)
@@ -435,6 +444,108 @@ def post(post_id):
         flash("게시글을 가져오는 중 오류가 발생했습니다.")
         return redirect(url_for('index'))
 
+@app.route('/edit/<int:post_id>', methods=['GET', 'POST'])
+@login_required
+def edit_post(post_id):
+    """게시글 수정 기능"""
+    if request.method == 'GET':
+        # 수정 페이지 표시
+        try:
+            ensure_db_pool()
+
+            with get_db_connection() as db:
+                with db.cursor() as cursor:
+                    cursor.execute("SELECT * FROM posts WHERE id=%s", (post_id,))
+                    post = cursor.fetchone()
+
+                    if post:
+                        return render_template('edit_post.html', post=post)
+                    else:
+                        flash("게시글을 찾을 수 없습니다.")
+                        return redirect(url_for('index'))
+
+        except Exception as e:
+            app.logger.error(f"Error fetching post for edit {post_id}: {e}")
+            flash("게시글을 가져오는 중 오류가 발생했습니다.")
+            return redirect(url_for('index'))
+
+    elif request.method == 'POST':
+        # 게시글 수정 처리
+        try:
+            title = request.form['title']
+            content = request.form['content']
+            file = request.files['file']
+
+            # 제목 유효성 검사
+            if not title.strip():
+                flash("제목을 입력하세요.")
+                return redirect(url_for('edit_post', post_id=post_id))
+
+            ensure_db_pool()
+
+            with get_db_connection() as db:
+                with db.cursor() as cursor:
+                    # 기존 게시글 정보 조회
+                    cursor.execute("SELECT * FROM posts WHERE id=%s", (post_id,))
+                    existing_post = cursor.fetchone()
+
+                    if not existing_post:
+                        flash("게시글을 찾을 수 없습니다.")
+                        return redirect(url_for('index'))
+
+                    # 파일 처리
+                    file_name = existing_post['file_name']
+                    original_file_name = existing_post['original_file_name']
+
+                    # 새 파일이 업로드된 경우
+                    if file and file.filename and allowed_file(file.filename):
+                        # ZIP 파일인 경우 크기 확인
+                        if file.filename.lower().endswith('.zip'):
+                            file_size = get_file_size(file)
+                            if file_size > MAX_ZIP_SIZE:
+                                flash(f"ZIP 파일 크기가 100MB를 초과합니다. (현재 크기: {format_file_size(file_size)})")
+                                return redirect(url_for('edit_post', post_id=post_id))
+
+                        # 기존 파일 삭제
+                        if existing_post['file_name']:
+                            old_file_path = os.path.join(app.config['UPLOAD_FOLDER'], existing_post['file_name'])
+                            if os.path.exists(old_file_path):
+                                try:
+                                    os.remove(old_file_path)
+                                    app.logger.info(f"Old file deleted: {old_file_path}")
+                                except Exception as file_error:
+                                    app.logger.warning(f"Failed to delete old file {old_file_path}: {file_error}")
+
+                        # 새 파일 저장
+                        original_file_name = file.filename
+                        unique_filename = str(uuid.uuid4()) + os.path.splitext(file.filename)[1]
+                        
+                        try:
+                            file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
+                            file_name = unique_filename
+                            app.logger.info(f"New file saved: {unique_filename}")
+                        except Exception as file_error:
+                            app.logger.error(f"Failed to save new file: {file_error}")
+                            flash("파일 저장 중 오류가 발생했습니다.")
+                            return redirect(url_for('edit_post', post_id=post_id))
+
+                    # 게시글 업데이트
+                    cursor.execute("""
+                        UPDATE posts 
+                        SET title=%s, content=%s, file_name=%s, original_file_name=%s, updated_at=NOW()
+                        WHERE id=%s
+                    """, (title, content, file_name, original_file_name, post_id))
+                    db.commit()
+
+            flash("게시글이 수정되었습니다.")
+            app.logger.info(f"Post {post_id} updated successfully")
+            return redirect(url_for('post', post_id=post_id))
+
+        except Exception as e:
+            app.logger.error(f"Error updating post {post_id}: {e}")
+            flash("게시글 수정 중 오류가 발생했습니다.")
+            return redirect(url_for('edit_post', post_id=post_id))
+
 @app.route('/new', methods=['GET', 'POST'])
 @login_required
 def new_post():
@@ -448,14 +559,14 @@ def new_post():
 
         if file and allowed_file(file.filename):
             original_file_name = file.filename
-            
+
             # ZIP 파일인 경우 크기 확인
             if file.filename.lower().endswith('.zip'):
                 file_size = get_file_size(file)
                 if file_size > MAX_ZIP_SIZE:
                     flash(f"ZIP 파일 크기가 100MB를 초과합니다. (현재 크기: {format_file_size(file_size)})")
                     return redirect(url_for('new_post'))
-            
+
             unique_filename = str(uuid.uuid4()) + os.path.splitext(file.filename)[1]
             try:
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
@@ -472,7 +583,7 @@ def new_post():
             with get_db_connection() as db:
                 with db.cursor() as cursor:
                     cursor.execute("""
-                        INSERT INTO posts (title, content, file_name, original_file_name) 
+                        INSERT INTO posts (title, content, file_name, original_file_name)
                         VALUES (%s, %s, %s, %s)
                     """, (title, content, file_name, original_file_name))
                     db.commit()
@@ -508,9 +619,9 @@ def download_file(post_id):
                     file_path = os.path.join(app.config['UPLOAD_FOLDER'], post['file_name'])
                     if os.path.exists(file_path):
                         return send_from_directory(
-                            app.config['UPLOAD_FOLDER'], 
-                            post['file_name'], 
-                            as_attachment=True, 
+                            app.config['UPLOAD_FOLDER'],
+                            post['file_name'],
+                            as_attachment=True,
                             download_name=post['original_file_name']
                         )
                     else:
