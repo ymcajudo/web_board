@@ -98,6 +98,27 @@
         .home-btn:hover {
             background-color: #f5f5f5;
         }
+        
+        /* Flash 메시지 스타일 */
+        .flash-messages {
+            width: 60%;
+            margin: 0 auto 20px auto;
+        }
+        
+        .flash-message {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 3px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .flash-message.success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
     </style>
 </head>
 <body>
@@ -112,6 +133,17 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- Flash 메시지 표시 -->
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for message in messages %}
+                    <div class="flash-message">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
 
     <h1>게시글 확인</h1>
     <form id="postForm">
@@ -130,12 +162,22 @@
 
         <div class="button-container">
             <a href="/edit/{{ post.id }}" class="edit-btn">수정</a>
-            <form action="/delete/{{ post.id }}" method="post" style="display: inline;" onsubmit="return confirm('정말로 삭제하시겠습니까?');">
-                <button type="submit" class="delete-btn">삭제</button>
-            </form>
+            <button type="button" class="delete-btn" onclick="deletePost()">삭제</button>
             <a href="/" class="home-btn">홈으로</a>
         </div>
     </form>
+
+    <!-- 삭제용 hidden form -->
+    <form id="deleteForm" action="/delete/{{ post.id }}" method="post" style="display: none;">
+    </form>
+
+    <script>
+        function deletePost() {
+            if (confirm('정말로 삭제하시겠습니까?')) {
+                document.getElementById('deleteForm').submit();
+            }
+        }
+    </script>
 
     <div class="footer">
         Copyright 2024. Myeongjin Kim all rights reserved.
