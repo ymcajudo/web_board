@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>게시글 수정</title>
+    <style>
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .user-info {
+            font-size: 14px;
+            color: #666;
+        }
+        .logout-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+        form {
+            width: 60%; /* 폼 전체 너비 */
+            margin: auto; /* 가운데 정렬 */
+        }
+        h1 {
+            text-align: center; /* 타이틀 가운데 정렬 */
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+        }
+        input[type="text"], textarea {
+            width: 100%; /* 입력 박스 너비를 부모 요소의 100%로 설정 */
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+        .button-container {
+            text-align: right; /* 버튼을 오른쪽으로 정렬 */
+            margin-top: 10px; /* 버튼과 입력 박스 사이의 간격 */
+        }
+        .footer {
+            width: 60%; /* 폼과 동일한 너비 설정 */
+            margin: 20px auto 0 auto; /* 가운데 정렬 및 상단 마진 설정 */
+            font-size: 12px;
+            color: gray;
+            text-align: right; /* 텍스트를 오른쪽으로 정렬 */
+        }
+        .current-file {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 3px;
+        }
+        .file-info {
+            font-size: 14px;
+            color: #495057;
+        }
+        .file-change-notice {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div></div>
+        <div class="user-info">
+            {% if session.username %}
+                <span>{{ session.username }}님 환영합니다!</span>
+                <a href="{{ url_for('logout') }}">
+                    <button class="logout-btn">로그아웃</button>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <h1>게시글 수정</h1>
+    <form id="postForm" action="/edit/{{ post.id }}" method="post" enctype="multipart/form-data" onsubmit="return validateForm()">
+        <label for="title">제목:</label>
+        <input type="text" id="title" name="title" value="{{ post.title }}">
+
+        <label for="content">내용:</label>
+        <textarea id="content" name="content" rows="5">{{ post.content }}</textarea>
+
+        {% if post.file_name %}
+            <div class="current-file">
+                <div class="file-info">
+                    <strong>현재 첨부파일:</strong> 
+                    <a href="{{ url_for('download_file', post_id=post.id) }}">{{ post.original_file_name }}</a>
+                </div>
+                <div class="file-change-notice">
+                    새 파일을 선택하면 기존 파일이 교체됩니다.
+                </div>
+            </div>
+        {% endif %}
+
+        <label for="file">파일 업로드:</label>
+        <input type="file" id="file" name="file">
+
+        <div class="button-container">
+            <input type="submit" value="수정">
+            <a href="/post/{{ post.id }}" style="margin-left: 10px;">
+                <button type="button">취소</button>
+            </a>
+        </div>
+    </form>
+
+    <script>
+        function validateForm() {
+            const title = document.getElementById('title').value;
+            if (!title.trim()) {
+                alert('제목을 입력하세요.');
+                return false; // 폼 제출 중단
+            }
+            return true; // 폼 제출 계속
+        }
+    </script>
+
+    <div class="footer">
+        Copyright 2024. Myeongjin Kim all rights reserved.
+    </div>
+</body>
+</html>
