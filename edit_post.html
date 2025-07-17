@@ -86,6 +86,12 @@
             background-color: #f5f5f5;
         }
         
+        input[type="submit"]:disabled {
+            background-color: #f5f5f5;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+        
         .cancel-btn {
             background-color: white;
             color: #333;
@@ -99,6 +105,40 @@
         }
         .cancel-btn:hover {
             background-color: #f5f5f5;
+        }
+        
+        .error-message {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        .loading {
+            display: none;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        
+        /* Flash 메시지 스타일 */
+        .flash-messages {
+            width: 60%;
+            margin: 0 auto 20px auto;
+        }
+        
+        .flash-message {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 3px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .flash-message.success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
         }
     </style>
 </head>
@@ -115,10 +155,21 @@
         </div>
     </div>
 
+    <!-- Flash 메시지 표시 -->
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for message in messages %}
+                    <div class="flash-message">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
     <h1>게시글 수정</h1>
-    <form id="postForm" action="/edit/{{ post.id }}" method="post" enctype="multipart/form-data" onsubmit="return validateForm()">
+    <form id="postForm" action="/edit/{{ post.id }}" method="post" enctype="multipart/form-data">
         <label for="title">제목:</label>
-        <input type="text" id="title" name="title" value="{{ post.title }}">
+        <input type="text" id="title" name="title" value="{{ post.title }}" required>
 
         <label for="content">내용:</label>
         <textarea id="content" name="content" rows="5">{{ post.content }}</textarea>
@@ -136,23 +187,99 @@
         {% endif %}
 
         <label for="file">파일 업로드:</label>
-        <input type="file" id="file" name="file">
+        <input type="file" id="file" name="file" accept=".txt,.pdf,.png,.jpg,.jpeg,.gif,.zip">
+        <div id="fileError" class="error-message"></div>
 
         <div class="button-container">
-            <input type="submit" value="수정">
+            <input type="submit" id="submitBtn" value="수정">
+            <div id="loadingMsg" class="loading">수정 중...</div>
             <a href="/post/{{ post.id }}" class="cancel-btn">취소</a>
         </div>
     </form>
 
     <script>
-        function validateForm() {
+        document.getElementById('postForm').addEventListener('submit', function(e) {
+            // 기본 검증
             const title = document.getElementById('title').value;
+            const submitBtn = document.getElementById('submitBtn');
+            const loadingMsg = document.getElementById('loadingMsg');
+            const fileError = document.getElementById('fileError');
+            
+            // 에러 메시지 초기화
+            fileError.style.display = 'none';
+            fileError.textContent = '';
+            
+            // 제목 검증
             if (!title.trim()) {
                 alert('제목을 입력하세요.');
-                return false; // 폼 제출 중단
+                e.preventDefault();
+                return false;
             }
-            return true; // 폼 제출 계속
-        }
+            
+            // 파일 크기 검증
+            const fileInput = document.getElementById('file');
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const maxSize = 100 * 1024 * 1024; // 100MB
+                
+                if (file.name.toLowerCase().endsWith('.zip') && file.size > maxSize) {
+                    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+                    fileError.textContent = `ZIP 파일 크기가 100MB를 초과합니다. (현재 크기: ${fileSizeMB}MB)`;
+                    fileError.style.display = 'block';
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // 파일 형식 검증
+                const allowedExtensions = ['.txt', '.pdf', '.png', '.jpg', '.jpeg', '.gif', '.zip'];
+                const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+                
+                if (!allowedExtensions.includes(fileExtension)) {
+                    fileError.textContent = '허용되지 않는 파일 형식입니다.';
+                    fileError.style.display = 'block';
+                    e.preventDefault();
+                    return false;
+                }
+            }
+            
+            // 폼 제출 시 버튼 비활성화 및 로딩 표시
+            submitBtn.disabled = true;
+            submitBtn.value = '수정 중...';
+            loadingMsg.style.display = 'inline';
+            
+            // 5초 후 버튼 재활성화 (네트워크 오류 대비)
+            setTimeout(function() {
+                submitBtn.disabled = false;
+                submitBtn.value = '수정';
+                loadingMsg.style.display = 'none';
+            }, 5000);
+            
+            return true;
+        });
+        
+        // 파일 선택 시 실시간 검증
+        document.getElementById('file').addEventListener('change', function(e) {
+            const fileError = document.getElementById('fileError');
+            fileError.style.display = 'none';
+            fileError.textContent = '';
+            
+            if (this.files.length > 0) {
+                const file = this.files[0];
+                const maxSize = 100 * 1024 * 1024; // 100MB
+                
+                if (file.name.toLowerCase().endsWith('.zip') && file.size > maxSize) {
+                    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+                    fileError.textContent = `ZIP 파일 크기가 100MB를 초과합니다. (현재 크기: ${fileSizeMB}MB)`;
+                    fileError.style.display = 'block';
+                    this.value = ''; // 파일 선택 취소
+                }
+            }
+        });
+        
+        // 페이지 로드 시 제목 필드에 포커스
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('title').focus();
+        });
     </script>
 
     <div class="footer">

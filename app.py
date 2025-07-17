@@ -391,34 +391,62 @@ def index():
 def delete_post(post_id):
     try:
         ensure_db_pool()  # 데이터베이스 연결 풀 확인
-
+        
+        # 삭제 전 게시글 존재 확인
+        post = None
         with get_db_connection() as db:
             with db.cursor() as cursor:
-                # 파일명 조회
-                cursor.execute("SELECT file_name FROM posts WHERE id=%s", (post_id,))
+                cursor.execute("SELECT * FROM posts WHERE id=%s", (post_id,))
                 post = cursor.fetchone()
-
-                # 파일 삭제
-                if post and post['file_name']:
-                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], post['file_name'])
-                    if os.path.exists(file_path):
-                        try:
-                            os.remove(file_path)
-                            app.logger.info(f"File deleted: {file_path}")
-                        except Exception as file_error:
-                            app.logger.warning(f"Failed to delete file {file_path}: {file_error}")
-
-                # 게시글 삭제
+                
+                if not post:
+                    app.logger.warning(f"Post {post_id} not found for deletion")
+                    flash("삭제할 게시글을 찾을 수 없습니다.")
+                    return redirect(url_for('index'))
+                
+                app.logger.info(f"Found post {post_id} for deletion: {post['title']}")
+        
+        # 파일 삭제
+        if post and post['file_name']:
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], post['file_name'])
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                    app.logger.info(f"File deleted: {file_path}")
+                except Exception as file_error:
+                    app.logger.warning(f"Failed to delete file {file_path}: {file_error}")
+        
+        # 데이터베이스에서 게시글 삭제
+        with get_db_connection() as db:
+            with db.cursor() as cursor:
+                # 삭제 전 카운트 확인
+                cursor.execute("SELECT COUNT(*) as count FROM posts WHERE id=%s", (post_id,))
+                before_count = cursor.fetchone()['count']
+                app.logger.info(f"Posts count before deletion: {before_count}")
+                
+                # 삭제 실행
                 cursor.execute("DELETE FROM posts WHERE id=%s", (post_id,))
-                db.commit()
-
-        flash("게시글이 삭제되었습니다.")
-        app.logger.info(f"Post {post_id} deleted successfully")
-
+                deleted_rows = cursor.rowcount
+                app.logger.info(f"DELETE query executed, affected rows: {deleted_rows}")
+                
+                # 삭제 후 카운트 확인
+                cursor.execute("SELECT COUNT(*) as count FROM posts WHERE id=%s", (post_id,))
+                after_count = cursor.fetchone()['count']
+                app.logger.info(f"Posts count after deletion: {after_count}")
+                
+                if deleted_rows > 0:
+                    db.commit()
+                    app.logger.info(f"Transaction committed for post {post_id}")
+                    flash("게시글이 성공적으로 삭제되었습니다.")
+                else:
+                    db.rollback()
+                    app.logger.warning(f"No rows affected, rolling back transaction for post {post_id}")
+                    flash("게시글 삭제에 실패했습니다.")
+        
     except Exception as e:
         app.logger.error(f"Error deleting post {post_id}: {e}")
-        flash("게시글 삭제 중 오류가 발생했습니다.")
-
+        flash(f"게시글 삭제 중 오류가 발생했습니다: {str(e)}")
+    
     return redirect(url_for('index'))
 
 @app.route('/post/<int:post_id>')
@@ -443,6 +471,135 @@ def post(post_id):
         app.logger.error(f"Error fetching post {post_id}: {e}")
         flash("게시글을 가져오는 중 오류가 발생했습니다.")
         return redirect(url_for('index'))
+
+@app.route('/edit/<int:post_id>', methods=['GET', 'POST'])
+@login_required
+def edit_post(post_id):
+    """게시글 수정 기능"""
+    if request.method == 'GET':
+        # 수정 페이지 표시
+        try:
+            ensure_db_pool()
+
+            with get_db_connection() as db:
+                with db.cursor() as cursor:
+                    cursor.execute("SELECT * FROM posts WHERE id=%s", (post_id,))
+                    post = cursor.fetchone()
+
+                    if post:
+                        return render_template('edit_post.html', post=post)
+                    else:
+                        flash("게시글을 찾을 수 없습니다.")
+                        return redirect(url_for('index'))
+
+        except Exception as e:
+            app.logger.error(f"Error fetching post for edit {post_id}: {e}")
+            flash("게시글을 가져오는 중 오류가 발생했습니다.")
+            return redirect(url_for('index'))
+
+    elif request.method == 'POST':
+        # 게시글 수정 처리
+        try:
+            title = request.form.get('title', '').strip()
+            content = request.form.get('content', '')
+            file = request.files.get('file')
+
+            # 제목 유효성 검사
+            if not title:
+                flash("제목을 입력하세요.")
+                # 기존 게시글 정보를 다시 가져와서 폼에 표시
+                with get_db_connection() as db:
+                    with db.cursor() as cursor:
+                        cursor.execute("SELECT * FROM posts WHERE id=%s", (post_id,))
+                        post = cursor.fetchone()
+                        if post:
+                            return render_template('edit_post.html', post=post)
+                        else:
+                            flash("게시글을 찾을 수 없습니다.")
+                            return redirect(url_for('index'))
+
+            ensure_db_pool()
+
+            with get_db_connection() as db:
+                with db.cursor() as cursor:
+                    # 기존 게시글 정보 조회
+                    cursor.execute("SELECT * FROM posts WHERE id=%s", (post_id,))
+                    existing_post = cursor.fetchone()
+
+                    if not existing_post:
+                        flash("게시글을 찾을 수 없습니다.")
+                        return redirect(url_for('index'))
+
+                    # 파일 처리
+                    file_name = existing_post['file_name']
+                    original_file_name = existing_post['original_file_name']
+
+                    # 새 파일이 업로드된 경우
+                    if file and file.filename and allowed_file(file.filename):
+                        # ZIP 파일인 경우 크기 확인
+                        if file.filename.lower().endswith('.zip'):
+                            file_size = get_file_size(file)
+                            if file_size > MAX_ZIP_SIZE:
+                                flash(f"ZIP 파일 크기가 100MB를 초과합니다. (현재 크기: {format_file_size(file_size)})")
+                                return render_template('edit_post.html', post=existing_post)
+
+                        # 기존 파일 삭제
+                        if existing_post['file_name']:
+                            old_file_path = os.path.join(app.config['UPLOAD_FOLDER'], existing_post['file_name'])
+                            if os.path.exists(old_file_path):
+                                try:
+                                    os.remove(old_file_path)
+                                    app.logger.info(f"Old file deleted: {old_file_path}")
+                                except Exception as file_error:
+                                    app.logger.warning(f"Failed to delete old file {old_file_path}: {file_error}")
+
+                        # 새 파일 저장
+                        original_file_name = file.filename
+                        unique_filename = str(uuid.uuid4()) + os.path.splitext(file.filename)[1]
+                        
+                        try:
+                            file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
+                            file_name = unique_filename
+                            app.logger.info(f"New file saved: {unique_filename}")
+                        except Exception as file_error:
+                            app.logger.error(f"Failed to save new file: {file_error}")
+                            flash("파일 저장 중 오류가 발생했습니다.")
+                            return render_template('edit_post.html', post=existing_post)
+
+                    # 게시글 업데이트
+                    cursor.execute("""
+                        UPDATE posts 
+                        SET title=%s, content=%s, file_name=%s, original_file_name=%s, updated_at=NOW()
+                        WHERE id=%s
+                    """, (title, content, file_name, original_file_name, post_id))
+                    
+                    affected_rows = cursor.rowcount
+                    if affected_rows > 0:
+                        db.commit()
+                        flash("게시글이 성공적으로 수정되었습니다.")
+                        app.logger.info(f"Post {post_id} updated successfully")
+                        return redirect(url_for('post', post_id=post_id))
+                    else:
+                        db.rollback()
+                        flash("게시글 수정에 실패했습니다.")
+                        return render_template('edit_post.html', post=existing_post)
+
+        except Exception as e:
+            app.logger.error(f"Error updating post {post_id}: {e}")
+            flash(f"게시글 수정 중 오류가 발생했습니다: {str(e)}")
+            
+            # 오류 발생 시 기존 게시글 정보를 다시 가져와서 폼에 표시
+            try:
+                with get_db_connection() as db:
+                    with db.cursor() as cursor:
+                        cursor.execute("SELECT * FROM posts WHERE id=%s", (post_id,))
+                        post = cursor.fetchone()
+                        if post:
+                            return render_template('edit_post.html', post=post)
+            except:
+                pass
+            
+            return redirect(url_for('index'))
 
 @app.route('/new', methods=['GET', 'POST'])
 @login_required
