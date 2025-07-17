@@ -52,52 +52,6 @@
             color: gray;
             text-align: right; /* 텍스트를 오른쪽으로 정렬 */
         }
-        
-        /* 수정된 버튼 스타일 */
-        .edit-btn {
-            background-color: white;
-            color: #333;
-            border: 1px solid #ccc;
-            padding: 8px 16px;
-            border-radius: 3px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            margin-right: 10px;
-            font-size: 14px;
-        }
-        .edit-btn:hover {
-            background-color: #f5f5f5;
-        }
-        
-        .delete-btn {
-            background-color: white;
-            color: #333;
-            border: 1px solid #ccc;
-            padding: 8px 16px;
-            border-radius: 3px;
-            cursor: pointer;
-            margin-right: 10px;
-            font-size: 14px;
-        }
-        .delete-btn:hover {
-            background-color: #f5f5f5;
-        }
-        
-        .home-btn {
-            background-color: white;
-            color: #333;
-            border: 1px solid #ccc;
-            padding: 8px 16px;
-            border-radius: 3px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 14px;
-        }
-        .home-btn:hover {
-            background-color: #f5f5f5;
-        }
     </style>
 </head>
 <body>
@@ -114,7 +68,7 @@
     </div>
 
     <h1>게시글 확인</h1>
-    <form id="postForm">
+    <form id="postForm" action="/delete/{{ post.id }}" method="post" onsubmit="return confirm('정말로 삭제하시겠습니까?');">
         <label for="title">제목:</label>
         <input type="text" id="title" name="title" value="{{ post.title }}" readonly>
 
@@ -129,13 +83,18 @@
         {% endif %}
 
         <div class="button-container">
-            <a href="/edit/{{ post.id }}" class="edit-btn">수정</a>
-            <form action="/delete/{{ post.id }}" method="post" style="display: inline;" onsubmit="return confirm('정말로 삭제하시겠습니까?');">
-                <button type="submit" class="delete-btn">삭제</button>
-            </form>
-            <a href="/" class="home-btn">홈으로</a>
+            <button type="submit">삭제</button>
+            <a href="/" id="homeButton" style="margin-left: 10px;">
+                <button type="button">홈으로</button>
+            </a>
         </div>
     </form>
+
+    <script>
+        document.getElementById('homeButton').addEventListener('click', function(event) {
+            window.location.href = '/';
+        });
+    </script>
 
     <div class="footer">
         Copyright 2024. Myeongjin Kim all rights reserved.

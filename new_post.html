@@ -52,22 +52,6 @@
             color: gray;
             text-align: right; /* 텍스트를 오른쪽으로 정렬 */
         }
-        .file-info {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
-        .error-message {
-            color: #dc3545;
-            font-size: 12px;
-            margin-top: 5px;
-        }
-        .loading {
-            display: none;
-            color: #007bff;
-            font-size: 12px;
-            margin-top: 5px;
-        }
     </style>
 </head>
 <body>
@@ -92,13 +76,10 @@
         <textarea id="content" name="content" rows="5"></textarea>
 
         <label for="file">파일 업로드:</label>
-        <input type="file" id="file" name="file" onchange="checkFileSize()">
-        <div id="fileInfo" class="file-info"></div>
-        <div id="errorMessage" class="error-message"></div>
-        <div id="loadingMessage" class="loading">파일 크기 확인 중...</div>
+        <input type="file" id="file" name="file">
 
         <div class="button-container">
-            <input type="submit" value="등록" id="submitBtn">
+            <input type="submit" value="등록">
             <a href="/" id="homeButton" style="margin-left: 10px;">
                 <button type="button">홈으로</button>
             </a>
@@ -106,43 +87,25 @@
     </form>
 
     <script>
-        function formatFileSize(bytes) {
-            if (bytes >= 1024 * 1024) {
-                return (bytes / (1024 * 1024)).toFixed(1) + 'MB';
-            } else if (bytes >= 1024) {
-                return (bytes / 1024).toFixed(1) + 'KB';
-            } else {
-                return bytes + 'B';
+        function validateForm() {
+            const title = document.getElementById('title').value;
+            if (!title.trim()) {
+                alert('제목을 입력하세요.');
+                return false; // 폼 제출 중단
             }
+            return true; // 폼 제출 계속
         }
 
-        function checkFileSize() {
-            const fileInput = document.getElementById('file');
-            const fileInfo = document.getElementById('fileInfo');
-            const errorMessage = document.getElementById('errorMessage');
-            const loadingMessage = document.getElementById('loadingMessage');
-            const submitBtn = document.getElementById('submitBtn');
-            
-            // 초기화
-            fileInfo.textContent = '';
-            errorMessage.textContent = '';
-            loadingMessage.style.display = 'none';
-            submitBtn.disabled = false;
-            
-            if (!fileInput.files.length) {
-                return;
+        document.getElementById('homeButton').addEventListener('click', function(event) {
+            event.preventDefault(); // 기본 동작(링크 이동) 방지
+            if (confirm('저장하지 않고 홈으로 이동하시겠습니까?')) {
+                window.location.href = '/';
             }
-            
-            const file = fileInput.files[0];
-            const fileSize = file.size;
-            const fileName = file.name;
-            
-            // 파일 정보 표시
-            fileInfo.textContent = `파일: ${fileName} (${formatFileSize(fileSize)})`;
-            
-            // ZIP 파일 크기 확인
-            if (fileName.toLowerCase().endsWith('.zip')) {
-                const maxSize = 100 * 1024 * 1024; // 100MB
-                
-                if (fileSize > maxSize) {
-                    errorMessage.textContent = `ZIP 파일 크기가 100MB를 초과합니
+        });
+    </script>
+
+    <div class="footer">
+        Copyright 2024. Myeongjin Kim all rights reserved.
+    </div>
+</body>
+</html>
