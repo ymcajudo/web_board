@@ -391,34 +391,62 @@ def index():
 def delete_post(post_id):
     try:
         ensure_db_pool()  # 데이터베이스 연결 풀 확인
-
+        
+        # 삭제 전 게시글 존재 확인
+        post = None
         with get_db_connection() as db:
             with db.cursor() as cursor:
-                # 파일명 조회
-                cursor.execute("SELECT file_name FROM posts WHERE id=%s", (post_id,))
+                cursor.execute("SELECT * FROM posts WHERE id=%s", (post_id,))
                 post = cursor.fetchone()
-
-                # 파일 삭제
-                if post and post['file_name']:
-                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], post['file_name'])
-                    if os.path.exists(file_path):
-                        try:
-                            os.remove(file_path)
-                            app.logger.info(f"File deleted: {file_path}")
-                        except Exception as file_error:
-                            app.logger.warning(f"Failed to delete file {file_path}: {file_error}")
-
-                # 게시글 삭제
+                
+                if not post:
+                    app.logger.warning(f"Post {post_id} not found for deletion")
+                    flash("삭제할 게시글을 찾을 수 없습니다.")
+                    return redirect(url_for('index'))
+                
+                app.logger.info(f"Found post {post_id} for deletion: {post['title']}")
+        
+        # 파일 삭제
+        if post and post['file_name']:
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], post['file_name'])
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                    app.logger.info(f"File deleted: {file_path}")
+                except Exception as file_error:
+                    app.logger.warning(f"Failed to delete file {file_path}: {file_error}")
+        
+        # 데이터베이스에서 게시글 삭제
+        with get_db_connection() as db:
+            with db.cursor() as cursor:
+                # 삭제 전 카운트 확인
+                cursor.execute("SELECT COUNT(*) as count FROM posts WHERE id=%s", (post_id,))
+                before_count = cursor.fetchone()['count']
+                app.logger.info(f"Posts count before deletion: {before_count}")
+                
+                # 삭제 실행
                 cursor.execute("DELETE FROM posts WHERE id=%s", (post_id,))
-                db.commit()
-
-        flash("게시글이 삭제되었습니다.")
-        app.logger.info(f"Post {post_id} deleted successfully")
-
+                deleted_rows = cursor.rowcount
+                app.logger.info(f"DELETE query executed, affected rows: {deleted_rows}")
+                
+                # 삭제 후 카운트 확인
+                cursor.execute("SELECT COUNT(*) as count FROM posts WHERE id=%s", (post_id,))
+                after_count = cursor.fetchone()['count']
+                app.logger.info(f"Posts count after deletion: {after_count}")
+                
+                if deleted_rows > 0:
+                    db.commit()
+                    app.logger.info(f"Transaction committed for post {post_id}")
+                    flash("게시글이 성공적으로 삭제되었습니다.")
+                else:
+                    db.rollback()
+                    app.logger.warning(f"No rows affected, rolling back transaction for post {post_id}")
+                    flash("게시글 삭제에 실패했습니다.")
+        
     except Exception as e:
         app.logger.error(f"Error deleting post {post_id}: {e}")
-        flash("게시글 삭제 중 오류가 발생했습니다.")
-
+        flash(f"게시글 삭제 중 오류가 발생했습니다: {str(e)}")
+    
     return redirect(url_for('index'))
 
 @app.route('/post/<int:post_id>')
