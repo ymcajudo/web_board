@@ -569,7 +569,7 @@ def edit_post(post_id):
                     # 게시글 업데이트
                     cursor.execute("""
                         UPDATE posts 
-                        SET title=%s, content=%s, file_name=%s, original_file_name=%s, updated_at=NOW()
+                        SET title=%s, content=%s, file_name=%s, original_file_name=%s
                         WHERE id=%s
                     """, (title, content, file_name, original_file_name, post_id))
                     
