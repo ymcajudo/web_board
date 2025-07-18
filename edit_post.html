@@ -41,6 +41,90 @@
             padding: 5px;
             margin-bottom: 10px;
         }
+        
+        /* 파일 업로드 영역 스타일 */
+        .file-upload-container {
+            margin-bottom: 20px;
+        }
+        
+        .file-drop-zone {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            background-color: #f9f9f9;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
+        
+        .file-drop-zone:hover {
+            border-color: #007bff;
+            background-color: #f0f8ff;
+        }
+        
+        .file-drop-zone.drag-over {
+            border-color: #007bff;
+            background-color: #e6f3ff;
+            border-style: solid;
+        }
+        
+        .file-drop-zone .drop-message {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .file-drop-zone .drop-icon {
+            font-size: 48px;
+            color: #ccc;
+            margin-bottom: 15px;
+        }
+        
+        .file-drop-zone.drag-over .drop-icon {
+            color: #007bff;
+        }
+        
+        .file-input-hidden {
+            display: none;
+        }
+        
+        .file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #495057;
+        }
+        
+        .file-info.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .file-info.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .file-remove-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 2px 6px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        
+        .file-remove-btn:hover {
+            background-color: #c82333;
+        }
+        
         .button-container {
             text-align: right; /* 버튼을 오른쪽으로 정렬 */
             margin-top: 10px; /* 버튼과 입력 박스 사이의 간격 */
@@ -59,7 +143,7 @@
             border: 1px solid #dee2e6;
             border-radius: 3px;
         }
-        .file-info {
+        .current-file-info {
             font-size: 14px;
             color: #495057;
         }
@@ -174,21 +258,30 @@
         <label for="content">내용:</label>
         <textarea id="content" name="content" rows="5">{{ post.content }}</textarea>
 
-        {% if post.file_name %}
-            <div class="current-file">
-                <div class="file-info">
-                    <strong>현재 첨부파일:</strong> 
-                    <a href="{{ url_for('download_file', post_id=post.id) }}">{{ post.original_file_name }}</a>
+        <div class="file-upload-container">
+            {% if post.file_name %}
+                <div class="current-file">
+                    <div class="current-file-info">
+                        <strong>현재 첨부파일:</strong> 
+                        <a href="{{ url_for('download_file', post_id=post.id) }}">{{ post.original_file_name }}</a>
+                    </div>
+                    <div class="file-change-notice">
+                        새 파일을 선택하면 기존 파일이 교체됩니다.
+                    </div>
                 </div>
-                <div class="file-change-notice">
-                    새 파일을 선택하면 기존 파일이 교체됩니다.
+            {% endif %}
+
+            <label>파일 업로드:</label>
+            <div class="file-drop-zone" id="fileDropZone">
+                <div class="drop-icon">📁</div>
+                <div class="drop-message">
+                    <strong>파일을 여기로 드래그하거나 클릭하여 선택하세요</strong><br>
+                    <small>허용 형식: .txt, .pdf, .png, .jpg, .jpeg, .gif, .zip (ZIP 파일은 100MB 이하)</small>
                 </div>
             </div>
-        {% endif %}
-
-        <label for="file">파일 업로드:</label>
-        <input type="file" id="file" name="file" accept=".txt,.pdf,.png,.jpg,.jpeg,.gif,.zip">
-        <div id="fileError" class="error-message"></div>
+            <input type="file" id="file" name="file" class="file-input-hidden" accept=".txt,.pdf,.png,.jpg,.jpeg,.gif,.zip">
+            <div id="fileInfo" class="file-info" style="display: none;"></div>
+        </div>
 
         <div class="button-container">
             <input type="submit" id="submitBtn" value="수정">
@@ -198,16 +291,131 @@
     </form>
 
     <script>
+        const fileDropZone = document.getElementById('fileDropZone');
+        const fileInput = document.getElementById('file');
+        const fileInfo = document.getElementById('fileInfo');
+
+        // 파일 드롭 존 클릭 시 파일 선택 다이얼로그 열기
+        fileDropZone.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        // 파일 선택 시 처리
+        fileInput.addEventListener('change', function(e) {
+            handleFileSelect(e.target.files[0]);
+        });
+
+        // 드래그 오버 이벤트 처리
+        fileDropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            fileDropZone.classList.add('drag-over');
+        });
+
+        // 드래그 리브 이벤트 처리
+        fileDropZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            fileDropZone.classList.remove('drag-over');
+        });
+
+        // 파일 드롭 이벤트 처리
+        fileDropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            fileDropZone.classList.remove('drag-over');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+                // 파일 input에 파일 설정
+                const dt = new DataTransfer();
+                dt.items.add(files[0]);
+                fileInput.files = dt.files;
+            }
+        });
+
+        // 파일 선택 처리 함수
+        function handleFileSelect(file) {
+            if (!file) {
+                fileInfo.style.display = 'none';
+                return;
+            }
+
+            // 파일 크기 포맷팅
+            function formatFileSize(bytes) {
+                if (bytes >= 1024 * 1024) {
+                    return (bytes / (1024 * 1024)).toFixed(1) + 'MB';
+                } else if (bytes >= 1024) {
+                    return (bytes / 1024).toFixed(1) + 'KB';
+                } else {
+                    return bytes + 'B';
+                }
+            }
+
+            // 파일 형식 검증
+            const allowedExtensions = ['.txt', '.pdf', '.png', '.jpg', '.jpeg', '.gif', '.zip'];
+            const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+            
+            if (!allowedExtensions.includes(fileExtension)) {
+                fileInfo.className = 'file-info error';
+                fileInfo.innerHTML = `
+                    <strong>❌ 허용되지 않는 파일 형식</strong><br>
+                    허용되는 형식: .txt, .pdf, .png, .jpg, .jpeg, .gif, .zip
+                `;
+                fileInfo.style.display = 'block';
+                
+                // 파일 input 초기화
+                fileInput.value = '';
+                return;
+            }
+
+            // ZIP 파일 크기 검사
+            const maxZipSize = 100 * 1024 * 1024; // 100MB
+            if (file.name.toLowerCase().endsWith('.zip') && file.size > maxZipSize) {
+                fileInfo.className = 'file-info error';
+                fileInfo.innerHTML = `
+                    <strong>❌ 파일 크기 초과</strong><br>
+                    ZIP 파일 크기가 100MB를 초과합니다.<br>
+                    현재 크기: ${formatFileSize(file.size)}
+                `;
+                fileInfo.style.display = 'block';
+                
+                // 파일 input 초기화
+                fileInput.value = '';
+                return;
+            }
+
+            // 파일 정보 표시
+            fileInfo.className = 'file-info success';
+            fileInfo.innerHTML = `
+                <strong>✅ 선택된 파일:</strong> ${file.name}<br>
+                <strong>크기:</strong> ${formatFileSize(file.size)}<br>
+                <strong>타입:</strong> ${file.type || '알 수 없음'}
+                <button type="button" class="file-remove-btn" onclick="removeFile()">제거</button>
+            `;
+            fileInfo.style.display = 'block';
+
+            // 드롭 존 메시지 변경
+            fileDropZone.querySelector('.drop-message').innerHTML = `
+                <strong>파일이 선택되었습니다: ${file.name}</strong><br>
+                <small>다른 파일을 선택하려면 클릭하거나 드래그하세요</small>
+            `;
+        }
+
+        // 파일 제거 함수
+        function removeFile() {
+            fileInput.value = '';
+            fileInfo.style.display = 'none';
+            fileDropZone.querySelector('.drop-message').innerHTML = `
+                <strong>파일을 여기로 드래그하거나 클릭하여 선택하세요</strong><br>
+                <small>허용 형식: .txt, .pdf, .png, .jpg, .jpeg, .gif, .zip (ZIP 파일은 100MB 이하)</small>
+            `;
+        }
+
+        // 폼 제출 이벤트 처리
         document.getElementById('postForm').addEventListener('submit', function(e) {
             // 기본 검증
             const title = document.getElementById('title').value;
             const submitBtn = document.getElementById('submitBtn');
             const loadingMsg = document.getElementById('loadingMsg');
-            const fileError = document.getElementById('fileError');
-            
-            // 에러 메시지 초기화
-            fileError.style.display = 'none';
-            fileError.textContent = '';
             
             // 제목 검증
             if (!title.trim()) {
@@ -216,16 +424,13 @@
                 return false;
             }
             
-            // 파일 크기 검증
-            const fileInput = document.getElementById('file');
+            // 파일 크기 검증 (이미 handleFileSelect에서 처리되지만 추가 검증)
             if (fileInput.files.length > 0) {
                 const file = fileInput.files[0];
                 const maxSize = 100 * 1024 * 1024; // 100MB
                 
                 if (file.name.toLowerCase().endsWith('.zip') && file.size > maxSize) {
-                    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
-                    fileError.textContent = `ZIP 파일 크기가 100MB를 초과합니다. (현재 크기: ${fileSizeMB}MB)`;
-                    fileError.style.display = 'block';
+                    alert('ZIP 파일 크기가 100MB를 초과합니다.');
                     e.preventDefault();
                     return false;
                 }
@@ -235,8 +440,7 @@
                 const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
                 
                 if (!allowedExtensions.includes(fileExtension)) {
-                    fileError.textContent = '허용되지 않는 파일 형식입니다.';
-                    fileError.style.display = 'block';
+                    alert('허용되지 않는 파일 형식입니다.');
                     e.preventDefault();
                     return false;
                 }
@@ -256,24 +460,14 @@
             
             return true;
         });
-        
-        // 파일 선택 시 실시간 검증
-        document.getElementById('file').addEventListener('change', function(e) {
-            const fileError = document.getElementById('fileError');
-            fileError.style.display = 'none';
-            fileError.textContent = '';
-            
-            if (this.files.length > 0) {
-                const file = this.files[0];
-                const maxSize = 100 * 1024 * 1024; // 100MB
-                
-                if (file.name.toLowerCase().endsWith('.zip') && file.size > maxSize) {
-                    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
-                    fileError.textContent = `ZIP 파일 크기가 100MB를 초과합니다. (현재 크기: ${fileSizeMB}MB)`;
-                    fileError.style.display = 'block';
-                    this.value = ''; // 파일 선택 취소
-                }
-            }
+
+        // 전역 드래그 이벤트 방지 (브라우저에서 파일이 열리는 것을 방지)
+        document.addEventListener('dragover', function(e) {
+            e.preventDefault();
+        });
+
+        document.addEventListener('drop', function(e) {
+            e.preventDefault();
         });
         
         // 페이지 로드 시 제목 필드에 포커스
