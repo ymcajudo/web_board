@@ -276,10 +276,10 @@
                 <div class="drop-icon">📁</div>
                 <div class="drop-message">
                     <strong>파일을 여기로 드래그하거나 클릭하여 선택하세요</strong><br>
-                    <small>허용 형식: .txt, .pdf, .png, .jpg, .jpeg, .gif, .zip (ZIP 파일은 100MB 이하)</small>
+                    <small>모든 파일 형식 허용 (확장자 없는 파일은 제외)</small>
                 </div>
             </div>
-            <input type="file" id="file" name="file" class="file-input-hidden" accept=".txt,.pdf,.png,.jpg,.jpeg,.gif,.zip">
+            <input type="file" id="file" name="file" class="file-input-hidden">
             <div id="fileInfo" class="file-info" style="display: none;"></div>
         </div>
 
@@ -350,15 +350,15 @@
                 }
             }
 
-            // 파일 형식 검증
-            const allowedExtensions = ['.txt', '.pdf', '.png', '.jpg', '.jpeg', '.gif', '.zip'];
-            const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+            // 파일 형식 검증 (확장자가 있는지만 확인)
+            const fileName = file.name.toLowerCase();
+            const hasExtension = fileName.includes('.') && fileName.lastIndexOf('.') !== fileName.length - 1;
             
-            if (!allowedExtensions.includes(fileExtension)) {
+            if (!hasExtension) {
                 fileInfo.className = 'file-info error';
                 fileInfo.innerHTML = `
-                    <strong>❌ 허용되지 않는 파일 형식</strong><br>
-                    허용되는 형식: .txt, .pdf, .png, .jpg, .jpeg, .gif, .zip
+                    <strong>❌ 파일 형식 오류</strong><br>
+                    확장자가 없는 파일은 업로드할 수 없습니다.
                 `;
                 fileInfo.style.display = 'block';
                 
@@ -406,7 +406,7 @@
             fileInfo.style.display = 'none';
             fileDropZone.querySelector('.drop-message').innerHTML = `
                 <strong>파일을 여기로 드래그하거나 클릭하여 선택하세요</strong><br>
-                <small>허용 형식: .txt, .pdf, .png, .jpg, .jpeg, .gif, .zip (ZIP 파일은 100MB 이하)</small>
+                <small>모든 파일 형식 허용 (확장자 없는 파일은 제외)</small>
             `;
         }
 
@@ -424,23 +424,22 @@
                 return false;
             }
             
-            // 파일 크기 검증 (이미 handleFileSelect에서 처리되지만 추가 검증)
+            // 파일 형식 검증 (확장자가 있는지만 확인)
             if (fileInput.files.length > 0) {
                 const file = fileInput.files[0];
-                const maxSize = 100 * 1024 * 1024; // 100MB
+                const fileName = file.name.toLowerCase();
+                const hasExtension = fileName.includes('.') && fileName.lastIndexOf('.') !== fileName.length - 1;
                 
-                if (file.name.toLowerCase().endsWith('.zip') && file.size > maxSize) {
-                    alert('ZIP 파일 크기가 100MB를 초과합니다.');
+                if (!hasExtension) {
+                    alert('확장자가 없는 파일은 업로드할 수 없습니다.');
                     e.preventDefault();
                     return false;
                 }
                 
-                // 파일 형식 검증
-                const allowedExtensions = ['.txt', '.pdf', '.png', '.jpg', '.jpeg', '.gif', '.zip'];
-                const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+                const maxSize = 100 * 1024 * 1024; // 100MB
                 
-                if (!allowedExtensions.includes(fileExtension)) {
-                    alert('허용되지 않는 파일 형식입니다.');
+                if (file.name.toLowerCase().endsWith('.zip') && file.size > maxSize) {
+                    alert('ZIP 파일 크기가 100MB를 초과합니다.');
                     e.preventDefault();
                     return false;
                 }
