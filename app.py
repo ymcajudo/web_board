@@ -263,11 +263,15 @@ def ensure_db_pool():
     if db_pool is None or db_pool._closed:
         app.logger.info("Initializing database connection pool...")
         init_db_pool()
-
+"""
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'zip'}
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+"""
+
+def allowed_file(filename):
+    return filename and '.' in filename and filename != '.'
 
 def get_file_size(file_obj):
     """파일 객체의 크기를 바이트 단위로 반환"""
@@ -345,7 +349,7 @@ def index():
         ensure_db_pool()  # 데이터베이스 연결 풀 확인
 
         page = request.args.get('page', 1, type=int)
-        per_page = 5
+        per_page = 10
         offset = (page - 1) * per_page
 
         with get_db_connection() as db:
