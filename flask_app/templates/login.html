@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>로그인</title>
+    <title>명진이의 자료실</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -88,7 +88,7 @@
 </head>
 <body>
     <div class="login-container">
-        <h1>게시판 로그인</h1>
+        <h1>Log in</h1>
         
         <!-- Flash messages -->
         <div class="flash-messages">
@@ -103,16 +103,16 @@
         
         <form method="post" action="/login" onsubmit="return validateForm()">
             <div class="form-group">
-                <label for="username">아이디:</label>
+                <label for="username">ID:</label>
                 <input type="text" id="username" name="username" required>
             </div>
             
             <div class="form-group">
-                <label for="password">비밀번호:</label>
+                <label for="password">Password:</label>
                 <input type="password" id="password" name="password" required>
             </div>
             
-            <button type="submit" class="login-button">로그인</button>
+            <button type="submit" class="login-button">Log in</button>
         </form>
         
         <div class="footer">
