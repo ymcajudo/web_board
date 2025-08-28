@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>게시글 수정</title>
+    <style>
+        body { font-family: sans-serif; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .user-info { font-size: 14px; color: #666; }
+        .logout-btn { background-color: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-left: 10px; }
+        form { width: 60%; margin: auto; }
+        h1 { text-align: center; }
+        label { display: block; margin-bottom: 10px; font-weight: bold; }
+        input[type="text"], textarea { width: 100%; padding: 8px; margin-bottom: 15px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .button-container { text-align: right; margin-top: 20px; }
+        .footer { width: 60%; margin: 20px auto 0; font-size: 12px; color: gray; text-align: right; }
+
+        /* 파일 관련 스타일 */
+        .file-section { margin-top: 20px; }
+        .existing-files-list, .selected-files { margin-top: 10px; }
+        .file-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; margin-bottom: 5px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; }
+        .file-info { flex-grow: 1; font-size: 14px; }
+        .file-name { font-weight: bold; }
+        .file-size { color: #6c757d; font-size: 12px; }
+        .file-remove-btn { background-color: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; }
+        
+        /* 파일 드롭 존 */
+        .file-drop-zone { border: 2px dashed #ccc; border-radius: 8px; padding: 40px; text-align: center; background-color: #f9f9f9; cursor: pointer; margin-top: 10px; }
+        .file-drop-zone.drag-over { border-color: #007bff; background-color: #e6f3ff; }
+        .file-input-hidden { display: none; }
+        .btn { background-color: white; color: #333; border: 1px solid #ccc; padding: 8px 16px; border-radius: 3px; cursor: pointer; text-decoration: none; display: inline-block; font-size: 14px; }
+        .btn-submit { margin-right: 10px; }
+        .btn:hover { background-color: #f5f5f5; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div></div>
+        <div class="user-info">
+            {% if session.username %}
+                <span>{{ session.username }}님 환영합니다!</span>
+                <a href="{{ url_for('logout') }}"><button class="logout-btn">로그아웃</button></a>
+            {% endif %}
+        </div>
+    </div>
+
+    <h1>게시글 수정</h1>
+    <form id="postForm" action="/edit/{{ post.id }}" method="post" enctype="multipart/form-data">
+        <label for="title">제목:</label>
+        <input type="text" id="title" name="title" value="{{ post.title }}" required>
+
+        <label for="content">내용:</label>
+        <textarea id="content" name="content" rows="15">{{ post.content }}</textarea>
+
+        <div class="file-section">
+            <label>첨부 파일 관리:</label>
+            <div class="existing-files-list">
+                {% if post.files %}
+                    {% for file in post.files %}
+                    <div class="file-item">
+                        <input type="checkbox" name="keep_files" value="{{ file.id }}" checked style="margin-right: 10px;">
+                        <div class="file-info">
+                            <div class="file-name">{{ file.original_file_name }}</div>
+                            <div class="file-size">
+                                {% if file.file_size >= 1024 * 1024 %}{{ "%.1f"|format(file.file_size / (1024 * 1024)) }}MB
+                                {% elif file.file_size >= 1024 %}{{ "%.1f"|format(file.file_size / 1024) }}KB
+                                {% else %}{{ file.file_size }}B{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p>첨부된 파일이 없습니다.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="file-section">
+            <label for="files">새 파일 추가 (기존 파일 유지 시 선택 안함):</label>
+            <div class="file-drop-zone" id="fileDropZone">
+                <div>📁</div>
+                <div><strong>파일을 여기로 드래그하거나 클릭하여 선택하세요</strong></div>
+            </div>
+            <input type="file" id="files" name="files[]" class="file-input-hidden" multiple>
+            <div id="selectedFiles" class="selected-files"></div>
+        </div>
+
+        <div class="button-container">
+            <input type="submit" value="수정 완료" class="btn btn-submit">
+            <a href="{{ url_for('post', post_id=post.id) }}" class="btn">취소</a>
+        </div>
+    </form>
+
+    <script>
+        // new_post.html의 파일 업로드 UI 스크립트와 거의 동일합니다.
+        const fileDropZone = document.getElementById('fileDropZone');
+        const fileInput = document.getElementById('files');
+        const selectedFilesDiv = document.getElementById('selectedFiles');
+        let selectedFiles = [];
+
+        fileDropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+        fileDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileDropZone.classList.add('drag-over');
+        });
+        fileDropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            fileDropZone.classList.remove('drag-over');
+        });
+        fileDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileDropZone.classList.remove('drag-over');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        function handleFiles(files) {
+            for (let file of files) {
+                const isDuplicate = selectedFiles.some(f => f.name === file.name && f.size === file.size);
+                if (!isDuplicate) selectedFiles.push(file);
+            }
+            updateFileInput();
+            displaySelectedFiles();
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function displaySelectedFiles() {
+            selectedFilesDiv.innerHTML = '';
+            selectedFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `
+                    <div class="file-info">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${formatFileSize(file.size)}</div>
+                    </div>
+                    <button type="button" class="file-remove-btn" onclick="removeFile(${index})">제거</button>
+                `;
+                selectedFilesDiv.appendChild(fileItem);
+            });
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            updateFileInput();
+            displaySelectedFiles();
+        }
+
+        function updateFileInput() {
+            const dataTransfer = new DataTransfer();
+            selectedFiles.forEach(file => dataTransfer.items.add(file));
+            fileInput.files = dataTransfer.files;
+        }
+    </script>
+
+    <div class="footer">
+        Copyright 2024. Myeongjin Kim all rights reserved.
+    </div>
+</body>
+</html>
