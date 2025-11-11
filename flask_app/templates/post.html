@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>명진이의 자료실</title>
+    <style>
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .user-info {
+            font-size: 14px;
+            color: #666;
+        }
+        .logout-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+        form {
+            width: 60%;
+            margin: auto;
+        }
+        h1 {
+            text-align: center;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+        
+        /* 첨부파일 목록 스타일 */
+        .files-section {
+            margin-bottom: 20px;
+        }
+        
+        .files-list {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+        }
+        
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        
+        .file-info {
+            flex-grow: 1;
+        }
+        
+        .file-name {
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .file-name a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        
+        .file-name a:hover {
+            text-decoration: underline;
+        }
+        
+        .file-size {
+            color: #6c757d;
+            font-size: 12px;
+            margin-top: 2px;
+        }
+        
+        .download-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .download-btn:hover {
+            background-color: #0056b3;
+        }
+        
+        .no-files {
+            color: #6c757d;
+            font-style: italic;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .button-container {
+            text-align: right;
+            margin-top: 10px;
+        }
+        
+        .footer {
+            width: 60%;
+            margin: 20px auto 0 auto;
+            font-size: 12px;
+            color: gray;
+            text-align: right;
+        }
+        
+        /* 수정된 버튼 스타일 */
+        .edit-btn {
+            background-color: white;
+            color: #333;
+            border: 1px solid #ccc;
+            padding: 8px 16px;
+            border-radius: 3px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+        .edit-btn:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .delete-btn {
+            background-color: white;
+            color: #333;
+            border: 1px solid #ccc;
+            padding: 8px 16px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+        .delete-btn:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .home-btn {
+            background-color: white;
+            color: #333;
+            border: 1px solid #ccc;
+            padding: 8px 16px;
+            border-radius: 3px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+        }
+        .home-btn:hover {
+            background-color: #f5f5f5;
+        }
+        
+        /* Flash 메시지 스타일 */
+        .flash-messages {
+            width: 60%;
+            margin: 0 auto 20px auto;
+        }
+        
+        .flash-message {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 3px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .flash-message.success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div></div>
+        <div class="user-info">
+            {% if session.username %}
+                <span>{{ session.username }}님 환영합니다!</span>
+                <a href="{{ url_for('logout') }}">
+                    <button class="logout-btn">로그아웃</button>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Flash 메시지 표시 -->
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for message in messages %}
+                    <div class="flash-message">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <h1>게시글 확인</h1>
+    <form id="postForm">
+        <label for="title">제목:</label>
+        <input type="text" id="title" name="title" value="{{ post.title }}" readonly>
+
+        <label for="content">내용:</label>
+        <textarea id="content" name="content" rows="20" readonly>{{ post.content }}</textarea>
+
+        <div class="files-section">
+            <label>첨부 파일:</label>
+            {% if post.files and post.files|length > 0 %}
+                <div class="files-list">
+                    {% for file in post.files %}
+                        <div class="file-item">
+                            <div class="file-info">
+                                <div class="file-name">
+                                    <a href="{{ url_for('download_file', file_id=file.id) }}">{{ file.original_file_name }}</a>
+                                </div>
+                                {% if file.file_size %}
+                                    <div class="file-size">
+                                        {% if file.file_size >= 1024 * 1024 %}
+                                            {{ "%.1f"|format(file.file_size / (1024 * 1024)) }}MB
+                                        {% elif file.file_size >= 1024 %}
+                                            {{ "%.1f"|format(file.file_size / 1024) }}KB
+                                        {% else %}
+                                            {{ file.file_size }}B
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <a href="{{ url_for('download_file', file_id=file.id) }}" class="download-btn">다운로드</a>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="files-list">
+                    <div class="no-files">첨부 파일이 없습니다.</div>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="button-container">
+            <a href="{{ url_for('edit_post', post_id=post.id, search=search_keyword) }}" class="edit-btn">수정</a>
+            <button type="button" class="delete-btn" onclick="deletePost()">삭제</button>
+            {% if search_keyword %}
+                <a href="{{ url_for('index', search=search_keyword) }}" class="home-btn">목록으로</a>
+            {% else %}
+                <a href="{{ url_for('index') }}" class="home-btn">홈으로</a>
+            {% endif %}
+        </div>
+    </form>
+
+    <!-- 삭제용 hidden form -->
+    <form id="deleteForm" action="/delete/{{ post.id }}" method="post" style="display: none;">
+    </form>
+
+    <script>
+        function deletePost() {
+            if (confirm('정말로 삭제하시겠습니까?')) {
+                document.getElementById('deleteForm').submit();
+            }
+        }
+    </script>
+
+    <div class="footer">
+        Copyright 2024. Myeongjin Kim all rights reserved.
+    </div>
+</body>
+</html>
