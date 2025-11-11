@@ -569,7 +569,8 @@ def login():
                 user_email = identity_data[username].get('email')
                 if user_email:
                     if send_2fa_email(user_email, code, username):
-                        flash(f"인증 코드가 {user_email}로 발송되었습니다.")
+                        #flash(f"인증 코드가 {user_email}로 발송되었습니다.")
+                        flash(f"인증 코드가 등록된 이메일로 발송되었습니다.")
                         return render_template('login.html', show_2fa=True, username=username)
                     else:
                         flash("인증 코드 발송에 실패했습니다. 관리자에게 문의하세요.")
