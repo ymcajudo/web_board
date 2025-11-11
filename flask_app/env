@@ -1,0 +1,46 @@
+# Flask 애플리케이션 설정
+FLASK_SECRET_KEY=YOUR_PASSWORD
+FLASK_DEBUG=False
+
+# 서버 설정
+SERVER_HOST=0.0.0.0
+SERVER_PORT=5000
+
+# 파일 업로드 설정
+UPLOAD_FOLDER=/mnt/test
+MAX_ZIP_SIZE=104857600
+
+# 데이터베이스 설정
+DB_HOST=dbnas
+DB_PORT=3306
+DB_USER=board_user
+DB_PASSWORD=YOUR_PASSWORD
+DB_NAME=board_db
+DB_CONNECTION_TIMEOUT=60
+DB_CHARSET=utf8mb4
+DB_COLLATION=utf8mb4_unicode_ci
+DB_POOL_SIZE=10
+
+# 로깅 설정
+LOG_LEVEL=INFO
+
+# SMTP 이메일 설정 (Gmail 예시)
+#SMTP_PORT=587
+#SENDER_EMAIL=your-email@gmail.com
+#SENDER_PASSWORD=your-app-password
+#SMTP_SERVER=smtp.gmail.com
+
+# 2FA 설정
+TWO_FA_CODE_EXPIRY=300
+
+# Gmail 앱 비밀번호 생성 방법:
+# 1. Google 계정 > 보안 > 2단계 인증 활성화
+# 2. 앱 비밀번호 생성 (https://myaccount.google.com/apppasswords)
+# 3. 생성된 16자리 비밀번호를 SENDER_PASSWORD에 입력
+
+# Naver 메일 사용 시:
+MAIL_SERVER=smtp.naver.com
+MAIL_PORT=587
+MAIL_USE_TLS=true
+MAIL_USERNAME=YOUR_EMAIL@naver.com
+MAIL_PASSWORD=YOUR_PASSWORD
