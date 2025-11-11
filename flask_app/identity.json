@@ -1,0 +1,10 @@
+{
+    "cloud": {
+        "password": "YOUR_PASSWORD",
+		"email": "YOUR_EMAIL_ADDRESS"
+    },
+    "admin": {
+        "password": "YOUR_PASSWORD",
+		"email": "YOUR_EMAIL_ADDRESS"
+    }
+}
