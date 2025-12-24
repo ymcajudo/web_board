@@ -226,7 +226,7 @@
         </div>
         <div class="user-info">
             {% if session.username %}
-                <span>{{ session.username }}님</span>
+                <span>{{ session.username }}님 접속 중</span>
                 <a href="{{ url_for('logout') }}">
                     <button class="logout-btn">로그아웃</button>
                 </a>
@@ -234,7 +234,7 @@
         </div>
     </div>
     
-    <a href="{{ url_for('dashboard') }}" class="back-btn">← 대시보드로 돌아가기</a>
+    <a href="{{ url_for('dashboard') }}" class="back-btn">← 대시보드</a>
     
     {% with messages = get_flashed_messages() %}
         {% if messages %}
