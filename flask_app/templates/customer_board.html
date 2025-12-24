@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ customer_name }} - 명진이의 자료실</title>
+    <style>
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+        
+        .customer-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .customer-name {
+            font-size: 24px;
+            color: #2c3e50;
+            font-weight: bold;
+        }
+        
+        .customer-badge {
+            background-color: #3498db;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: normal;
+        }
+        
+        .user-info {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .logout-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        
+        .back-btn {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 3px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        
+        .back-btn:hover {
+            background-color: #5a6268;
+        }
+        
+        .search-container {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .search-input {
+            width: 400px;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        
+        .search-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold; 
+        }
+        
+        .search-btn:hover {
+            background-color: #1e7e34;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            border: 1px solid black;
+            padding: 10px;
+            text-align: center;
+        }
+        
+        th:nth-child(1), td:nth-child(1) {
+            width: 50px;
+        }
+        
+        th:nth-child(2), td:nth-child(2) {
+            width: 200px;
+        }
+        
+        th:nth-child(3), td:nth-child(3) {
+            width: 400px;
+        }
+        
+        th:nth-child(4), td:nth-child(4) {
+            width: 80px;
+        }
+        
+        th:nth-child(5), td:nth-child(5) {
+            width: 150px;
+        }
+        
+        thead tr {
+            background-color: #f0f0f0;
+        }
+        
+        .button-container {
+            text-align: right;
+            margin-bottom: 10px;
+        }
+        
+        .button-container button {
+            font-size: 14px;
+            padding: 8px 25px;
+            font-weight: normal;
+            background-color: white;
+            color: #333;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .button-container button:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .pagination {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .pagination a {
+            margin: 0 5px;
+            text-decoration: none;
+            color: blue;
+        }
+        
+        .pagination a:hover {
+            text-decoration: underline;
+        }
+        
+        .footer {
+            text-align: right;
+            margin-top: 20px;
+            font-size: 12px;
+            color: gray;
+        }
+        
+        .file-count {
+            font-size: 12px;
+            color: #6c757d;
+            background-color: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        
+        .file-count.has-files {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .title-link {
+            color: #007bff;
+            text-decoration: none;
+        }
+        
+        .title-link:hover {
+            text-decoration: underline;
+        }
+        
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        
+        .flash-message {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 3px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="customer-header">
+            <span class="customer-name">{{ customer_name }}</span>
+            <span class="customer-badge">고객사 게시판</span>
+        </div>
+        <div class="user-info">
+            {% if session.username %}
+                <span>{{ session.username }}님</span>
+                <a href="{{ url_for('logout') }}">
+                    <button class="logout-btn">로그아웃</button>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <a href="{{ url_for('dashboard') }}" class="back-btn">← 대시보드로 돌아가기</a>
+    
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for message in messages %}
+                    <div class="flash-message">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    
+    <div class="search-container">
+        <form method="get" action="/customer/{{ customer_name }}" style="display: flex; gap: 10px; align-items: center;">
+            <input type="text" name="search" class="search-input" placeholder="제목 또는 내용으로 검색..." 
+                   value="{{ search_keyword or '' }}">
+            <button type="submit" class="search-btn">🔍 검색</button>
+            {% if search_keyword %}
+                <a href="/customer/{{ customer_name }}" class="search-reset-btn">전체 보기</a>
+            {% endif %}
+        </form>
+    </div>
+    
+    {% if search_keyword %}
+        <div class="search-info">
+            '<span class="search-keyword">{{ search_keyword }}</span>' 검색 결과
+        </div>
+    {% endif %}
+    
+    <div class="button-container">
+        <a href="{{ url_for('new_customer_post', customer_name=customer_name, search=search_keyword) }}">
+            <button>새 글 작성</button>
+        </a>
+    </div>
+    
+    {% if posts %}
+        <table>
+            <thead>
+                <tr>
+                    <th>순번</th>
+                    <th>제목</th>
+                    <th>내용</th>
+                    <th>첨부파일</th>
+                    <th>작성 시간</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for post in posts %}
+                <tr>
+                    <td>{{ post.seq }}</td>
+                    <td>
+                        <a href="{{ url_for('customer_post', customer_name=customer_name, post_id=post.id, search=search_keyword) }}" class="title-link">
+                            {{ post.short_title }}
+                        </a>
+                    </td>
+                    <td>{{ post.short_content }}</td>
+                    <td>
+                        {% if post.file_count > 0 %}
+                            <span class="file-count has-files">{{ post.file_count }}개</span>
+                        {% else %}
+                            <span class="file-count">없음</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ post.created_at }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="no-results">
+            {% if search_keyword %}
+                검색 결과가 없습니다.
+            {% else %}
+                등록된 게시글이 없습니다.
+            {% endif %}
+        </div>
+    {% endif %}
+    
+    {% if posts %}
+        <div class="pagination">
+            {% if page > 1 %}
+                <a href="{{ url_for('customer_board', customer_name=customer_name, page=page-1, search=search_keyword) }}">이전</a>
+            {% endif %}
+            {% for p in range(1, total_pages + 1) %}
+                {% if p == page %}
+                    <strong>{{ p }}</strong>
+                {% else %}
+                    <a href="{{ url_for('customer_board', customer_name=customer_name, page=p, search=search_keyword) }}">{{ p }}</a>
+                {% endif %}
+            {% endfor %}
+            {% if page < total_pages %}
+                <a href="{{ url_for('customer_board', customer_name=customer_name, page=page+1, search=search_keyword) }}">다음</a>
+            {% endif %}
+        </div>
+    {% endif %}
+    
+    <div class="footer">
+        Copyright 2024. Myeongjin Kim all rights reserved.
+    </div>
+</body>
+</html>

@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ customer_name }} - 새 글 작성</title>
+    <style>
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+        
+        .customer-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .customer-name {
+            font-size: 24px;
+            color: #2c3e50;
+            font-weight: bold;
+        }
+        
+        .customer-badge {
+            background-color: #3498db;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: normal;
+        }
+        
+        .user-info {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .logout-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        
+        .back-btn {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 3px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        
+        .back-btn:hover {
+            background-color: #5a6268;
+        }
+        
+        form {
+            width: 60%;
+            margin: auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 300px;
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+        }
+        
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        
+        /* 다중 파일 업로드 스타일 */
+        .file-upload-container {
+            margin-bottom: 25px;
+        }
+        
+        .file-drop-zone {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            background-color: #f9f9f9;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+        
+        .file-drop-zone:hover {
+            border-color: #3498db;
+            background-color: #f0f8ff;
+        }
+        
+        .file-drop-zone.drag-over {
+            border-color: #3498db;
+            background-color: #e6f3ff;
+            border-style: solid;
+        }
+        
+        .file-drop-zone .drop-message {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .file-drop-zone .drop-icon {
+            font-size: 48px;
+            color: #ccc;
+            margin-bottom: 15px;
+        }
+        
+        .file-drop-zone.drag-over .drop-icon {
+            color: #3498db;
+        }
+        
+        .file-input-hidden {
+            display: none;
+        }
+        
+        .selected-files {
+            margin-top: 15px;
+        }
+        
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        
+        .file-item:hover {
+            background-color: #e9ecef;
+        }
+        
+        .file-info {
+            flex-grow: 1;
+            font-size: 14px;
+        }
+        
+        .file-name {
+            font-weight: bold;
+            color: #495057;
+            word-break: break-all;
+        }
+        
+        .file-size {
+            color: #6c757d;
+            font-size: 12px;
+            margin-top: 3px;
+        }
+        
+        .file-remove-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background-color 0.2s;
+        }
+        
+        .file-remove-btn:hover {
+            background-color: #c0392b;
+        }
+        
+        .file-error {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 2px;
+        }
+        
+        .button-container {
+            text-align: right;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        
+        .footer {
+            width: 60%;
+            margin: 30px auto 0 auto;
+            font-size: 12px;
+            color: gray;
+            text-align: right;
+        }
+        
+        /* 제출 버튼 스타일 */
+        input[type="submit"] {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin-right: 10px;
+            transition: background-color 0.3s;
+        }
+        
+        input[type="submit"]:hover {
+            background-color: #2980b9;
+        }
+        
+        input[type="submit"]:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        .home-btn {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        .home-btn:hover {
+            background-color: #5a6268;
+        }
+        
+        .loading {
+            display: none;
+            color: #6c757d;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        
+        /* Flash 메시지 스타일 */
+        .flash-messages {
+            width: 60%;
+            margin: 0 auto 20px auto;
+        }
+        
+        .flash-message {
+            padding: 12px 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .flash-message.success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            form {
+                width: 95%;
+                padding: 20px;
+            }
+            
+            .footer {
+                width: 95%;
+            }
+            
+            .flash-messages {
+                width: 95%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="customer-header">
+            <span class="customer-name">{{ customer_name }}</span>
+            <span class="customer-badge">새 글 작성</span>
+        </div>
+        <div class="user-info">
+            {% if session.username %}
+                <span>{{ session.username }}님</span>
+                <a href="{{ url_for('logout') }}">
+                    <button class="logout-btn">로그아웃</button>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <a href="{% if search_keyword %}{{ url_for('customer_board', customer_name=customer_name, search=search_keyword) }}{% else %}{{ url_for('customer_board', customer_name=customer_name) }}{% endif %}" 
+       class="back-btn">← 목록으로 돌아가기</a>
+    
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for message in messages %}
+                    <div class="flash-message">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    
+    <form id="postForm" action="/customer/{{ customer_name }}/new" method="post" enctype="multipart/form-data">
+        <h1>{{ customer_name }} - 새 글 작성</h1>
+        
+        <label for="title">제목:</label>
+        <input type="text" id="title" name="title" required 
+               placeholder="제목을 입력하세요" maxlength="255">
+
+        <label for="content">내용:</label>
+        <textarea id="content" name="content" rows="20" 
+                  placeholder="내용을 입력하세요"></textarea>
+
+        <div class="file-upload-container">
+            <label>파일 업로드 (다중 선택 가능):</label>
+            <div class="file-drop-zone" id="fileDropZone">
+                <div class="drop-icon">📁</div>
+                <div class="drop-message">
+                    <strong>파일을 여기로 드래그하거나 클릭하여 선택하세요</strong><br>
+                    <small>여러 파일 동시 선택 가능 (확장자 없는 파일은 제외, ZIP 파일은 100MB 이하)</small>
+                </div>
+            </div>
+            <input type="file" id="files" name="files[]" class="file-input-hidden" multiple>
+            <div id="selectedFiles" class="selected-files"></div>
+        </div>
+
+        <div class="button-container">
+            <input type="submit" id="submitBtn" value="등록">
+            <div id="loadingMsg" class="loading">등록 중...</div>
+            {% if search_keyword %}
+                <a href="{{ url_for('customer_board', customer_name=customer_name, search=search_keyword) }}" class="home-btn" onclick="return confirmExit()">목록으로</a>
+            {% else %}
+                <a href="{{ url_for('customer_board', customer_name=customer_name) }}" class="home-btn" onclick="return confirmExit()">목록으로</a>
+            {% endif %}
+        </div>
+    </form>
+
+    <script>
+        const fileDropZone = document.getElementById('fileDropZone');
+        const fileInput = document.getElementById('files');
+        const selectedFilesDiv = document.getElementById('selectedFiles');
+        let selectedFiles = [];
+
+        // 파일 드롭 존 클릭 시 파일 선택 다이얼로그 열기
+        fileDropZone.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        // 파일 선택 시 처리
+        fileInput.addEventListener('change', function(e) {
+            handleFiles(e.target.files);
+        });
+
+        // 드래그 오버 이벤트 처리
+        fileDropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            fileDropZone.classList.add('drag-over');
+        });
+
+        // 드래그 리브 이벤트 처리
+        fileDropZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            fileDropZone.classList.remove('drag-over');
+        });
+
+        // 파일 드롭 이벤트 처리
+        fileDropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            fileDropZone.classList.remove('drag-over');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFiles(files);
+            }
+        });
+
+        // 파일 처리 함수
+        function handleFiles(files) {
+            // 새로 선택된 파일들을 기존 목록에 추가
+            for (let file of files) {
+                if (validateFile(file)) {
+                    // 중복 파일 체크
+                    const isDuplicate = selectedFiles.some(f => f.name === file.name && f.size === file.size);
+                    if (!isDuplicate) {
+                        selectedFiles.push(file);
+                    }
+                }
+            }
+            
+            updateFileInput();
+            displaySelectedFiles();
+            updateDropZoneMessage();
+        }
+
+        // 파일 유효성 검사
+        function validateFile(file) {
+            const fileName = file.name.toLowerCase();
+            const hasExtension = fileName.includes('.') && fileName.lastIndexOf('.') !== fileName.length - 1;
+            
+            if (!hasExtension) {
+                alert(`확장자가 없는 파일은 업로드할 수 없습니다: ${file.name}`);
+                return false;
+            }
+
+            // ZIP 파일 크기 체크
+            const maxZipSize = 100 * 1024 * 1024; // 100MB
+            if (fileName.endsWith('.zip') && file.size > maxZipSize) {
+                alert(`ZIP 파일 크기가 100MB를 초과합니다: ${file.name} (${formatFileSize(file.size)})`);
+                return false;
+            }
+
+            return true;
+        }
+
+        // 파일 크기 포맷팅
+        function formatFileSize(bytes) {
+            if (bytes >= 1024 * 1024) {
+                return (bytes / (1024 * 1024)).toFixed(1) + 'MB';
+            } else if (bytes >= 1024) {
+                return (bytes / 1024).toFixed(1) + 'KB';
+            } else {
+                return bytes + 'B';
+            }
+        }
+
+        // 선택된 파일 목록 표시
+        function displaySelectedFiles() {
+            selectedFilesDiv.innerHTML = '';
+            
+            if (selectedFiles.length === 0) {
+                selectedFilesDiv.style.display = 'none';
+                return;
+            }
+
+            selectedFilesDiv.style.display = 'block';
+            
+            selectedFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                
+                fileItem.innerHTML = `
+                    <div class="file-info">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${formatFileSize(file.size)}</div>
+                    </div>
+                    <button type="button" class="file-remove-btn" onclick="removeFile(${index})">제거</button>
+                `;
+                
+                selectedFilesDiv.appendChild(fileItem);
+            });
+        }
+
+        // 파일 제거 함수
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            updateFileInput();
+            displaySelectedFiles();
+            updateDropZoneMessage();
+        }
+
+        // 파일 input 업데이트
+        function updateFileInput() {
+            const dt = new DataTransfer();
+            selectedFiles.forEach(file => dt.items.add(file));
+            fileInput.files = dt.files;
+        }
+
+        // 드롭 존 메시지 업데이트
+        function updateDropZoneMessage() {
+            const dropMessage = fileDropZone.querySelector('.drop-message');
+            if (selectedFiles.length === 0) {
+                dropMessage.innerHTML = `
+                    <strong>파일을 여기로 드래그하거나 클릭하여 선택하세요</strong><br>
+                    <small>여러 파일 동시 선택 가능 (확장자 없는 파일은 제외, ZIP 파일은 100MB 이하)</small>
+                `;
+            } else {
+                dropMessage.innerHTML = `
+                    <strong>${selectedFiles.length}개 파일이 선택되었습니다</strong><br>
+                    <small>추가 파일을 선택하려면 클릭하거나 드래그하세요</small>
+                `;
+            }
+        }
+
+        // 폼 제출 이벤트 처리
+        document.getElementById('postForm').addEventListener('submit', function(e) {
+            const title = document.getElementById('title').value;
+            const submitBtn = document.getElementById('submitBtn');
+            const loadingMsg = document.getElementById('loadingMsg');
+            
+            if (!title.trim()) {
+                alert('제목을 입력하세요.');
+                e.preventDefault();
+                document.getElementById('title').focus();
+                return false;
+            }
+            
+            // 파일 재검증
+            for (let file of selectedFiles) {
+                if (!validateFile(file)) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+            
+            // 폼 제출 시 버튼 비활성화 및 로딩 표시
+            submitBtn.disabled = true;
+            submitBtn.value = '등록 중...';
+            loadingMsg.style.display = 'inline';
+            
+            // 10초 후 버튼 재활성화 (네트워크 오류 대비)
+            setTimeout(function() {
+                submitBtn.disabled = false;
+                submitBtn.value = '등록';
+                loadingMsg.style.display = 'none';
+            }, 10000);
+            
+            return true;
+        });
+
+        // 홈으로 버튼 확인
+        function confirmExit() {
+            if (document.getElementById('title').value.trim() || 
+                document.getElementById('content').value.trim() || 
+                selectedFiles.length > 0) {
+                return confirm('저장하지 않고 이동하시겠습니까? 입력한 내용이 사라집니다.');
+            }
+            return true;
+        }
+
+        // 전역 드래그 이벤트 방지
+        document.addEventListener('dragover', function(e) {
+            e.preventDefault();
+        });
+
+        document.addEventListener('drop', function(e) {
+            e.preventDefault();
+        });
+
+        // 페이지 로드 시 제목 필드에 포커스
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('title').focus();
+            
+            // 텍스트 영역 자동 크기 조정
+            const textarea = document.getElementById('content');
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            });
+            
+            // 초기 높이 설정
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight) + 'px';
+        });
+    </script>
+
+    <div class="footer">
+        Copyright 2024. Myeongjin Kim all rights reserved.
+    </div>
+</body>
+</html>
