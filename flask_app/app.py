@@ -661,7 +661,6 @@ def init_database():
 
 # ==================== 라우트 추가 ====================
 
-#@app.route('/')
 @app.route('/dashboard')
 @login_required
 def dashboard():
@@ -669,9 +668,10 @@ def dashboard():
     try:
         ensure_db_pool()
         
-        # 고객사 목록 가져오기
         with get_db_connection() as db:
             cursor = db.cursor(dictionary=True)
+            
+            # 고객사 목록 가져오기
             cursor.execute("SELECT name FROM customers ORDER BY created_at DESC")
             customers = cursor.fetchall()
             
@@ -682,17 +682,125 @@ def dashboard():
             cursor.execute("SELECT COUNT(*) as total FROM post_files")
             total_files = cursor.fetchone()['total']
             
+            # 고객사별 게시글 수 (파이 차트용)
+            customer_post_counts = []
+            for customer in customers:
+                table_name = sanitize_table_name(customer['name'])
+                try:
+                    cursor.execute(f"SELECT COUNT(*) as count FROM {table_name}")
+                    count = cursor.fetchone()['count']
+                    customer_post_counts.append({
+                        'name': customer['name'],
+                        'count': count
+                    })
+                except Exception as e:
+                    app.logger.error(f"Error counting posts for {customer['name']}: {e}")
+                    customer_post_counts.append({
+                        'name': customer['name'],
+                        'count': 0
+                    })
+            
+            # 월별 게시글 추이 데이터 (최근 12개월)
+            monthly_data = []
+            
+            # 일반 게시판 월별 데이터
+            cursor.execute("""
+                SELECT 
+                    DATE_FORMAT(created_at, '%Y-%m') as month,
+                    COUNT(*) as count
+                FROM posts
+                WHERE created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+                GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+                ORDER BY month
+            """)
+            general_monthly = {row['month']: row['count'] for row in cursor.fetchall()}
+            
+            # 고객사별 월별 데이터
+            customer_monthly = {}
+            for customer in customers:
+                table_name = sanitize_table_name(customer['name'])
+                try:
+                    cursor.execute(f"""
+                        SELECT 
+                            DATE_FORMAT(created_at, '%Y-%m') as month,
+                            COUNT(*) as count
+                        FROM {table_name}
+                        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+                        GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+                        ORDER BY month
+                    """)
+                    customer_monthly[customer['name']] = {row['month']: row['count'] for row in cursor.fetchall()}
+                except Exception as e:
+                    app.logger.error(f"Error getting monthly data for {customer['name']}: {e}")
+                    customer_monthly[customer['name']] = {}
+            
+            # 최근 12개월 목록 생성
+            from datetime import datetime, timedelta
+            current_date = datetime.now()
+            months = []
+            for i in range(11, -1, -1):
+                month_date = current_date - timedelta(days=30*i)
+                month_str = month_date.strftime('%Y-%m')
+                months.append(month_str)
+            
+            # 월별 전체 게시글 수 계산
+            cumulative_counts = []
+            new_posts_counts = []
+            
+            for month in months:
+                # 해당 월의 신규 게시글 수
+                new_count = general_monthly.get(month, 0)
+                for customer_data in customer_monthly.values():
+                    new_count += customer_data.get(month, 0)
+                new_posts_counts.append(new_count)
+                
+                # 해당 월까지의 누적 게시글 수
+                month_end = month + '-31'
+                cursor.execute(f"""
+                    SELECT COUNT(*) as count 
+                    FROM posts 
+                    WHERE created_at <= '{month_end}'
+                """)
+                cumulative = cursor.fetchone()['count']
+                
+                for customer in customers:
+                    table_name = sanitize_table_name(customer['name'])
+                    try:
+                        cursor.execute(f"""
+                            SELECT COUNT(*) as count 
+                            FROM {table_name} 
+                            WHERE created_at <= '{month_end}'
+                        """)
+                        cumulative += cursor.fetchone()['count']
+                    except:
+                        pass
+                
+                cumulative_counts.append(cumulative)
+            
+            monthly_data = {
+                'months': [m.split('-')[1] + '월' for m in months],
+                'cumulative': cumulative_counts,
+                'new_posts': new_posts_counts
+            }
+            
             cursor.close()
         
         return render_template('dashboard.html', 
                              customers=customers,
                              total_posts=total_posts,
-                             total_files=total_files)
+                             total_files=total_files,
+                             customer_post_counts=customer_post_counts,
+                             monthly_data=monthly_data)
         
     except Exception as e:
         app.logger.error(f"Error loading dashboard: {e}")
         flash("대시보드를 불러오는 중 오류가 발생했습니다.")
-        return render_template('dashboard.html', customers=[], total_posts=0, total_files=0)
+        return render_template('dashboard.html', 
+                             customers=[], 
+                             total_posts=0, 
+                             total_files=0,
+                             customer_post_counts=[],
+                             monthly_data={'months': [], 'cumulative': [], 'new_posts': []})
 
 @app.route('/api/customers', methods=['POST'])
 @login_required
