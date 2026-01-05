@@ -1,0 +1,36 @@
+Chart.js를 직접 다운로드해서 설치하는 방법을 알려드리겠습니다.
+방법 1: 공식 사이트에서 다운로드
+
+ㅇChart.js 다운로드
+
+cd /path/to/your/flask/app
+
+mkdir -p static/js
+
+cd static/js
+
+wget https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js
+
+## 디렉토리 구조
+
+설치 후 디렉토리 구조는 다음과 같아야 합니다:
+```
+your-flask-app/
+├── app.py
+├── templates/
+│   ├── dashboard.html
+│   ├── index.html
+│   └── ...
+├── static/
+│   └── js/
+│       └── chart.umd.min.js  ← 여기에 위치
+└── ...
+
+
+ㅇHTML 파일 수정
+
+기존:
+html<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+변경:
+html<script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
