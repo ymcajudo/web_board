@@ -66,18 +66,79 @@
             color: #495057;
         }
         
-        input[type="text"], textarea {
+        input[type="text"] {
             width: 100%;
-            padding: 8px;
+            padding: 10px;
             margin-bottom: 15px;
-            border: 1px solid #ddd;
+            border: 1px solid #ccc;
             border-radius: 4px;
+            font-size: 16px;
             box-sizing: border-box;
         }
         
-        textarea {
-            resize: vertical;
+        /* HTML 콘텐츠 표시 영역 */
+        .content-display {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            background-color: #f8f9fa;
             min-height: 200px;
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            line-height: 1.6;
+        }
+        
+        /* HTML 콘텐츠 내부 스타일링 */
+        .content-display h1,
+        .content-display h2,
+        .content-display h3,
+        .content-display h4 {
+            margin-top: 1em;
+            margin-bottom: 0.5em;
+            color: #2c3e50;
+        }
+        
+        .content-display p {
+            margin-bottom: 1em;
+        }
+        
+        .content-display ul,
+        .content-display ol {
+            margin-bottom: 1em;
+            padding-left: 2em;
+        }
+        
+        .content-display table {
+            width: 100%;
+            margin-bottom: 1em;
+            border-collapse: collapse;
+        }
+        
+        .content-display table th,
+        .content-display table td {
+            padding: 8px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .content-display table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        
+        .content-display img {
+            max-width: 100%;
+            height: auto;
+            margin: 10px 0;
+        }
+        
+        .content-display blockquote {
+            border-left: 4px solid #3498db;
+            padding-left: 15px;
+            margin: 15px 0;
+            color: #7f8c8d;
+            font-style: italic;
         }
         
         .files-section {
@@ -244,7 +305,9 @@
         <input type="text" id="title" name="title" value="{{ post.title }}" readonly>
 
         <label for="content">내용:</label>
-        <textarea id="content" name="content" rows="20" readonly>{{ post.content }}</textarea>
+        <div class="content-display" id="contentDisplay">
+            {{ post.content|safe }}
+        </div>
 
         <div class="files-section">
             <label>첨부 파일:</label>
