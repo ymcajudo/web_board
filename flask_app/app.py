@@ -5,6 +5,7 @@
 # 다중 파일 업로드 지원 추가
 # 검색 기능 추가
 # 고객사 관리 기능 추가
+# CKEditor 5 통합 추가
 
 from flask import Flask, request, redirect, url_for, render_template, flash, send_from_directory, session, jsonify
 import mysql.connector
@@ -30,6 +31,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import re
+import html
 
 # .env 파일 로드
 load_dotenv()
@@ -42,6 +44,11 @@ if not app.secret_key:
     raise ValueError("FLASK_SECRET_KEY 환경 변수가 설정되지 않았습니다.")
 
 app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', '/mnt/test')
+
+# CKEditor 설정
+app.config['CKEDITOR_SERVE_LOCAL'] = os.getenv('CKEDITOR_SERVE_LOCAL', 'True').lower() == 'true'
+app.config['CKEDITOR_HEIGHT'] = os.getenv('CKEDITOR_HEIGHT', '400')
+app.config['CKEDITOR_WIDTH'] = os.getenv('CKEDITOR_WIDTH', 'auto')
 
 # 이메일 설정 (SMTP) - MFA 기능 추가
 EMAIL_CONFIG = {
@@ -994,7 +1001,10 @@ def customer_board(customer_name):
                 post['short_title'] = title[:15] + ('...' if len(title) > 15 else '')
                 
                 content = post.get('content') or ''
-                post['short_content'] = content[:25] + ('...' if len(content) > 25 else '')
+                # HTML 태그 제거하여 텍스트만 표시
+                clean_content = html.unescape(content)
+                clean_content = re.sub(r'<[^>]*>', '', clean_content)
+                post['short_content'] = clean_content[:25] + ('...' if len(clean_content) > 25 else '')
         
         return render_template('customer_board.html',
                              customer_name=customer_name,
@@ -1093,6 +1103,9 @@ def customer_post(customer_name, post_id):
             if post:
                 post['created_at'] = convert_to_kst(post['created_at'])
                 post['files'] = get_customer_files(post_id, customer_name)
+                # HTML 이스케이프 해제
+                if post['content']:
+                    post['content'] = html.unescape(post['content'])
                 
                 search_keyword = request.args.get('search', '')
                 return render_template('customer_post.html', 
@@ -1168,6 +1181,9 @@ def edit_customer_post(customer_name, post_id):
         # [중요 수정] post 객체에 files 정보 추가
         existing_files = get_customer_files(post_id, customer_name)
         post['files'] = existing_files  # ← post 객체에 files 정보 추가
+        # HTML 이스케이프 해제
+        if post['content']:
+            post['content'] = html.unescape(post['content'])
         
         return render_template('edit_customer_post.html', 
                              customer_name=customer_name, 
@@ -1580,7 +1596,10 @@ def index():
                 post['short_title'] = title[:15] + ('...' if len(title) > 15 else '')
 
                 content = post.get('content') or ''
-                post['short_content'] = content[:25] + ('...' if len(content) > 25 else '')
+                # HTML 태그 제거하여 텍스트만 표시
+                clean_content = html.unescape(content)
+                clean_content = re.sub(r'<[^>]*>', '', clean_content)
+                post['short_content'] = clean_content[:25] + ('...' if len(clean_content) > 25 else '')
 
         app.logger.info(f"Successfully loaded {len(posts)} posts for page {page}" + 
                        (f" with search keyword '{search_keyword}'" if search_keyword else ""))
@@ -1657,6 +1676,9 @@ def post(post_id):
             if post:
                 post['created_at'] = convert_to_kst(post['created_at'])
                 post['files'] = get_post_files(post_id)
+                # HTML 이스케이프 해제
+                if post['content']:
+                    post['content'] = html.unescape(post['content'])
                 
                 search_keyword = request.args.get('search', '')
                 return render_template('post.html', post=post, search_keyword=search_keyword)
@@ -1685,6 +1707,9 @@ def edit_post(post_id):
 
                 if post:
                     post['files'] = get_post_files(post_id)
+                    # HTML 이스케이프 해제
+                    if post['content']:
+                        post['content'] = html.unescape(post['content'])
                     search_keyword = request.args.get('search', '')
                     return render_template('edit_post.html', post=post, search_keyword=search_keyword)
                 else:
@@ -1714,6 +1739,9 @@ def edit_post(post_id):
                     
                     if post:
                         post['files'] = get_post_files(post_id)
+                        # HTML 이스케이프 해제
+                        if post['content']:
+                            post['content'] = html.unescape(post['content'])
                         return render_template('edit_post.html', post=post, search_keyword=search_keyword)
                     else:
                         flash("게시글을 찾을 수 없습니다.")
@@ -1761,6 +1789,9 @@ def edit_post(post_id):
                             db.rollback()
                             cursor.close()
                             existing_post['files'] = get_post_files(post_id)
+                            # HTML 이스케이프 해제
+                            if existing_post['content']:
+                                existing_post['content'] = html.unescape(existing_post['content'])
                             return render_template('edit_post.html', post=existing_post, search_keyword=search_keyword)
 
                     cursor.execute("""
@@ -1785,6 +1816,9 @@ def edit_post(post_id):
                         flash("게시글 수정에 실패했습니다.")
                         cursor.close()
                         existing_post['files'] = get_post_files(post_id)
+                        # HTML 이스케이프 해제
+                        if existing_post['content']:
+                            existing_post['content'] = html.unescape(existing_post['content'])
                         return render_template('edit_post.html', post=existing_post, search_keyword=search_keyword)
 
                 except Exception as db_error:
@@ -1809,6 +1843,9 @@ def edit_post(post_id):
                     
                     if post:
                         post['files'] = get_post_files(post_id)
+                        # HTML 이스케이프 해제
+                        if post['content']:
+                            post['content'] = html.unescape(post['content'])
                         search_keyword = request.form.get('search_keyword', '')
                         return render_template('edit_post.html', post=post, search_keyword=search_keyword)
             except:
@@ -1893,6 +1930,48 @@ def download_file(file_id):
         flash("파일 다운로드 중 오류가 발생했습니다.")
         return redirect(url_for('index'))
 
+@app.route('/upload_image', methods=['POST'])
+@login_required
+def upload_image():
+    """CKEditor 이미지 업로드"""
+    try:
+        if 'upload' not in request.files:
+            return jsonify({'error': {'message': 'No file uploaded'}}), 400
+        
+        file = request.files['upload']
+        
+        if file.filename == '':
+            return jsonify({'error': {'message': 'No file selected'}}), 400
+        
+        if file and allowed_file(file.filename):
+            # 이미지 파일인지 확인
+            allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+            file_ext = os.path.splitext(file.filename.lower())[1]
+            
+            if file_ext not in allowed_extensions:
+                return jsonify({'error': {'message': 'Invalid image format'}}), 400
+            
+            # 고유한 파일명 생성
+            unique_filename = str(uuid.uuid4()) + file_ext
+            
+            # 파일 저장
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+            file.save(file_path)
+            
+            # URL 생성
+            image_url = url_for('uploaded_file', filename=unique_filename, _external=True)
+            
+            return jsonify({
+                'uploaded': True,
+                'url': image_url
+            })
+        
+        return jsonify({'error': {'message': 'Invalid file'}}), 400
+        
+    except Exception as e:
+        app.logger.error(f"Image upload error: {e}")
+        return jsonify({'error': {'message': str(e)}}), 500
+
 @app.route('/health')
 def health_check():
     """애플리케이션과 데이터베이스 상태 확인"""
@@ -1938,6 +2017,7 @@ if __name__ == '__main__':
         app.logger.info(f"  Max ZIP Size: {MAX_ZIP_SIZE} bytes")
         app.logger.info(f"  DB Pool Size: {DB_POOL_SIZE}")
         app.logger.info(f"  2FA Code Expiry: {TWO_FA_CODE_EXPIRY} seconds ({TWO_FA_CODE_EXPIRY // 60} minutes)")
+        app.logger.info(f"  CKEditor: Enabled (Local: {app.config['CKEDITOR_SERVE_LOCAL']})")
         
         init_db_pool()
         init_database()  # 데이터베이스 테이블 초기화 추가
